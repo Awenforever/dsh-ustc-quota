@@ -9,9 +9,10 @@ window.__ModuleLoader__.load({
     const SESSION_PROBE_ID = 'ustc-quota-session-probe';
     const ENDPOINT = 'plugins/dsh-ustc-quota/snapshot';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.0.8';
+    const CLIENT_VERSION = '1.0.9';
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
+    const HOST_VERSION_KEY = `${NS}:host-version-reload`;
 
     let clientCtx = null;
     let activeSessionId = null;
@@ -589,6 +590,7 @@ window.__ModuleLoader__.load({
           const body = await response.json();
           if (!body || !Array.isArray(body.keys)) throw new Error('invalid snapshot');
           if (seq !== requestSeq.current || cancelledRef.current) return null;
+          reloadForHostVersion(body.pluginVersion);
           setSnapshot(body);
           setError(null);
           setLoading(false);
@@ -902,6 +904,50 @@ window.__ModuleLoader__.load({
       header,
       body
       );
+    }
+
+    function versionParts(value) {
+      return String(value || '')
+        .split('.')
+        .map((part) => parseInt(part, 10))
+        .filter((part) => Number.isFinite(part));
+    }
+
+    function isNewerVersion(candidate, current) {
+      const left = versionParts(candidate);
+      const right = versionParts(current);
+      const length = Math.max(left.length, right.length);
+      for (let index = 0; index < length; index += 1) {
+        const a = left[index] || 0;
+        const b = right[index] || 0;
+        if (a !== b) return a > b;
+      }
+      return false;
+    }
+
+    // TokenWorks applies a new Host bundle live but does not necessarily make
+    // the already-open renderer load the new client module. The new Host reports
+    // its package version in the snapshot; the previous client reloads the page
+    // once when it sees a newer Host version. If the carrier caches the module
+    // even across a page reload, only a full app restart can replace it.
+    function reloadForHostVersion(hostVersion) {
+      if (typeof window === 'undefined' || typeof hostVersion !== 'string') return;
+      if (!isNewerVersion(hostVersion, CLIENT_VERSION)) return;
+      if (typeof sessionStorage !== 'undefined') {
+        try {
+          if (sessionStorage.getItem(HOST_VERSION_KEY) === hostVersion) return;
+          sessionStorage.setItem(HOST_VERSION_KEY, hostVersion);
+        } catch {
+          // Storage unavailable: fall through and reload once.
+        }
+      }
+      setTimeout(() => {
+        try {
+          window.location.reload();
+        } catch {
+          // Reload blocked by the carrier.
+        }
+      }, 120);
     }
 
     // A newly installed/updated client module may be HMR-loaded into an

@@ -16,6 +16,7 @@ import {
 } from './quota.js';
 
 const ROUTE_PATH = '/plugins/dsh-ustc-quota/snapshot';
+const PLUGIN_VERSION = '1.0.9';
 const KEY_INFO_PATH = 'key/info';
 const USER_INFO_PATH = 'user/info';
 const DISCOVERY_TTL_MS = 30000;
@@ -405,7 +406,7 @@ async function handleSnapshot(ctx, reader, request, response) {
       response.end();
       return;
     }
-    writeJson(response, 200, snapshot);
+    writeJson(response, 200, { ...snapshot, pluginVersion: PLUGIN_VERSION });
   } catch {
     if (request.method === 'HEAD') {
       response.writeHead(500, JSON_HEADERS);
