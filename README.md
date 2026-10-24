@@ -32,7 +32,7 @@ github:Awenforever/dsh-ustc-quota
 固定版本（推荐，避免默认分支后续变动）：
 
 ```text
-github:Awenforever/dsh-ustc-quota#v1.0.2
+github:Awenforever/dsh-ustc-quota#v1.0.3
 ```
 
 或者用你已有的安装方式指定同一目录/仓库：
@@ -49,7 +49,7 @@ target = github:Awenforever/dsh-ustc-quota
 TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deepseek-ai/dsh-plugin-manager`：
 
 1. 在左侧栏打开 **插件** → **安装插件**；
-2. 填入 `github:Awenforever/dsh-ustc-quota#v1.0.2`；
+2. 填入 `github:Awenforever/dsh-ustc-quota#v1.0.3`；
 3. 按提示重启/刷新词元工坊；
 4. 用学校统一身份登录后，卡片会自动出现。
 

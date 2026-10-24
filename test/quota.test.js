@@ -238,6 +238,31 @@ test('discovery keys on the USTC baseURL, not provider id or display name', () =
   assert.deepEqual(result.providers.map((provider) => provider.baseURL), ['https://api.llm.ustc.edu.cn', 'https://api.llm.ustc.edu.cn']);
 });
 
+test('discovery sees a provider added between two reads', () => {
+  const rowsBefore = [{
+    entry: { options: { name: '@deepseek-ai/dsh-llm-pi-ai' } },
+    override: {
+      providers: {
+        first: { displayName: 'First', baseURL: 'https://api.llm.ustc.edu.cn', apiKeyEnv: 'FIRST_KEY' },
+      },
+    },
+  }];
+  const rowsAfter = [{
+    entry: { options: { name: '@deepseek-ai/dsh-llm-pi-ai' } },
+    override: {
+      providers: {
+        first: { displayName: 'First', baseURL: 'https://api.llm.ustc.edu.cn', apiKeyEnv: 'FIRST_KEY' },
+        second: { displayName: 'Second', baseURL: 'https://api.llm.ustc.edu.cn/v1', apiKeyEnv: 'SECOND_KEY' },
+      },
+    },
+  }];
+  const before = discoverProvidersFromRows(rowsBefore, normalizeConfig({}));
+  const after = discoverProvidersFromRows(rowsAfter, normalizeConfig({}));
+  assert.deepEqual(before.providers.map((provider) => provider.provider), ['first']);
+  assert.deepEqual(after.providers.map((provider) => provider.provider), ['first', 'second']);
+  assert.equal(after.providers[1].keyRef, 'SECOND_KEY');
+});
+
 test('discovery falls back to explicit providers only when discovery is empty', () => {
   const config = normalizeConfig({
     providers: {
