@@ -42,15 +42,15 @@ plugin_manager install_bundle
 target = github:Awenforever/dsh-ustc-quota
 ```
 
-安装完成后刷新一次页面。没有运行 `pnpm run dev:web` 时，Client bundle 不会自动热替换。
+安装完成后刷新一次页面。Host、插件清单和 Client slot 会即时生效，**不需要重启 DSH**；没有运行 `pnpm run dev:web` 时，Client bundle 需要一次页面刷新才能加载。
 
 ### TokenWorks（词元工坊）
 
 TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deepseek-ai/dsh-plugin-manager`：
 
-1. 在左侧栏打开 **插件** → **安装插件**；
+1. 在左侧栏打开 **插件** → 点右上角 **+ 添加插件**；
 2. 填入 `github:Awenforever/dsh-ustc-quota#v1.0.3`；
-3. 按提示重启/刷新词元工坊；
+3. 按提示刷新页面；**不需要重启词元工坊**；
 4. 用学校统一身份登录后，卡片会自动出现。
 
 > 词元工坊插件页的「官方」只列出发行版自带的插件；第三方插件（包括本插件）不会出现在「官方」里，安装后会出现在「已安装」区域。这是正常的，不是没有装上。
@@ -100,6 +100,14 @@ key-c   8.7/30   29%       8.7/70   12%        11.1/100  11%
 3h/12h 来自 Key 级 `budget_limits` / `budget_limits_usage`；24h 可能来自 Key 级，也可能来自 `/user/info` 的用户级预算。合并规则和官方 `@ustc/tokenworks-usage` 一致：先看 `metadata.platform_budget_scope`，再看 Key 级、用户级和上次成功值。
 
 请求频率：正常 10 秒、重置过渡 8 秒；2 个端点 × 每把 Key，约 12–15 次/分钟/Key，低于平台的 `rpm_limit: 20`。Host 缓存会对多标签页去重。
+
+### 运行中新增 Key / Provider
+
+不需要重启，也不需要在插件里重新配置：
+
+- **DSH**：每次 Host 缓存过期（8 秒）都会重新读取 `llm-pi-ai` 的有效配置；Client 每 15 秒轮询一次。新加一个 provider + 新凭据引用后，最多约 15 秒出现新行；点卡片右上角的刷新按钮会立即绕过缓存重新发现。
+- **TokenWorks**：插件消费官方 `tokenworksUsage` 快照，官方服务自己处理登录/换 Key/账号切换，官方缓存约 30 秒；卡片会随快照更新，同样不需要重启。
+- 同一个凭据引用仍按一把 Key 处理；要显示成独立一行，请给新 Key 一个不同的 `apiKeyEnv`（DSH）或让 TokenWorks 切换到新账号。
 
 ### TokenWorks 路径
 
