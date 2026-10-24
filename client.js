@@ -7,7 +7,7 @@ window.__ModuleLoader__.load({
     const SLOT = 'sidebar.footer.action';
     const ENDPOINT = 'plugins/dsh-ustc-quota/snapshot';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.0.5';
+    const CLIENT_VERSION = '1.0.6';
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
 
@@ -20,6 +20,7 @@ window.__ModuleLoader__.load({
       noProvidersHint: '请检查模型设置中 baseURL 为 api.llm.ustc.edu.cn',
       tokenworksNotReady: '词元工坊未登录',
       tokenworksNotReadyHint: '登录词元工坊后会自动读取学校模型额度',
+      tokenworksRow: '词元',
       default: '默认',
       resetting: '重置中…',
       notConfigured: '未配置',
@@ -60,6 +61,7 @@ window.__ModuleLoader__.load({
       noProvidersHint: 'Check that a model provider uses baseURL api.llm.ustc.edu.cn',
       tokenworksNotReady: 'TokenWorks is not signed in',
       tokenworksNotReadyHint: 'Sign in to TokenWorks to load school model quota',
+      tokenworksRow: 'Tokens',
       default: 'default',
       resetting: 'Resetting…',
       notConfigured: 'not set',
@@ -100,13 +102,14 @@ window.__ModuleLoader__.load({
         order: 1,
         gridColumn: '1 / -1',
         margin: '0 0 6px',
-        padding: '8px 8px 7px',
+        padding: '10px 9px 8px',
         border: '1px solid var(--dsw-alias-border-l1)',
-        borderRadius: 8,
+        borderRadius: 12,
         background: 'var(--dsw-alias-bg-layer-1)',
+        boxShadow: '0 3px 12px rgba(15, 23, 42, 0.07)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 4,
+        gap: 5,
         fontSize: 11,
         lineHeight: 1.3,
         color: 'var(--dsw-alias-label-secondary)',
@@ -115,19 +118,20 @@ window.__ModuleLoader__.load({
       header: {
         display: 'flex',
         alignItems: 'center',
-        gap: 5,
+        gap: 6,
         minWidth: 0,
       },
       title: {
-        fontWeight: 600,
+        fontWeight: 700,
         color: 'var(--dsw-alias-label-primary)',
-        fontSize: 11,
+        fontSize: 13,
+        letterSpacing: '-0.01em',
         whiteSpace: 'nowrap',
       },
       meta: {
         flex: 1,
         minWidth: 0,
-        fontSize: 9,
+        fontSize: 8.5,
         color: 'var(--dsw-alias-label-secondary)',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
@@ -154,18 +158,33 @@ window.__ModuleLoader__.load({
         background: 'transparent',
         color: 'var(--dsw-alias-label-secondary)',
         cursor: 'pointer',
-        fontSize: 12,
+        fontSize: 13,
         lineHeight: 1,
         padding: '1px 2px',
-        borderRadius: 4,
+        borderRadius: 6,
       },
-      grid: {
+      table: {
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+      },
+      legendRow: {
         display: 'grid',
-        gridTemplateColumns: '38px repeat(3, minmax(0, 1fr))',
-        columnGap: 5,
-        rowGap: 4,
+        gridTemplateColumns: '36px repeat(3, minmax(0, 1fr))',
+        columnGap: 4,
         alignItems: 'center',
         minWidth: 0,
+        paddingBottom: 4,
+        borderBottom: '1px solid var(--dsw-alias-border-l1)',
+      },
+      keyRow: {
+        display: 'grid',
+        gridTemplateColumns: '36px repeat(3, minmax(0, 1fr))',
+        columnGap: 4,
+        alignItems: 'center',
+        minWidth: 0,
+        paddingTop: 6,
+        paddingBottom: 2,
       },
       legendCell: {
         minWidth: 0,
@@ -175,8 +194,8 @@ window.__ModuleLoader__.load({
         gap: 0,
       },
       legendName: {
-        fontSize: 9,
-        fontWeight: 600,
+        fontSize: 10,
+        fontWeight: 700,
         color: 'var(--dsw-alias-label-primary)',
         whiteSpace: 'nowrap',
       },
@@ -195,15 +214,15 @@ window.__ModuleLoader__.load({
         gap: 2,
         minWidth: 0,
         color: 'var(--dsw-alias-label-primary)',
-        fontWeight: 500,
-        fontSize: 10,
+        fontWeight: 650,
+        fontSize: 10.5,
       },
       keyLabel: {
         minWidth: 0,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
-        maxWidth: 28,
+        maxWidth: 30,
       },
       star: {
         flex: '0 0 auto',
@@ -230,18 +249,19 @@ window.__ModuleLoader__.load({
         minWidth: 0,
         display: 'flex',
         flexDirection: 'column',
-        gap: 1,
+        gap: 2,
       },
       valueLine: {
         display: 'flex',
         alignItems: 'baseline',
         justifyContent: 'space-between',
-        gap: 2,
+        gap: 3,
         minWidth: 0,
       },
       value: {
         minWidth: 0,
-        fontSize: 9,
+        fontSize: 10.5,
+        fontWeight: 650,
         color: 'var(--dsw-alias-label-primary)',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
@@ -249,16 +269,23 @@ window.__ModuleLoader__.load({
       },
       percent: {
         flex: '0 0 auto',
-        fontSize: 9,
+        fontSize: 8.5,
         color: 'var(--dsw-alias-label-secondary)',
         whiteSpace: 'nowrap',
       },
       bar: {
         position: 'relative',
-        height: 4,
-        borderRadius: 2,
-        background: 'var(--dsw-alias-bg-layer-2)',
+        height: 6,
+        borderRadius: 999,
+        background: 'transparent',
         overflow: 'hidden',
+      },
+      track: {
+        position: 'absolute',
+        inset: 0,
+        background: 'var(--dsw-alias-state-idle-primary)',
+        opacity: 0.24,
+        borderRadius: 999,
       },
       hint: {
         display: 'flex',
@@ -605,14 +632,7 @@ window.__ModuleLoader__.load({
           return h('div', { style: STYLE.cell, title: `${label}: ${t('resetting')}` },
             h('div', { style: { ...STYLE.value, color: 'var(--dsw-alias-label-secondary)' } }, t('resetting')),
             h('div', { style: STYLE.bar, role: 'progressbar', 'aria-label': label, 'aria-valuetext': t('resetting') },
-              h('div', {
-                style: {
-                  height: '100%',
-                  width: '0%',
-                  background: 'var(--dsw-alias-state-idle-primary)',
-                  opacity: 0.5,
-                },
-              })
+              h('div', { style: STYLE.track, 'aria-hidden': true })
             )
           );
         }
@@ -623,7 +643,7 @@ window.__ModuleLoader__.load({
           ? 'var(--dsw-alias-state-error-primary)'
           : ratio !== null && ratio >= 0.7
             ? 'var(--dsw-alias-state-warn-primary)'
-            : 'var(--dsw-alias-label-primary)';
+            : 'var(--dsw-alias-state-success-primary)';
         const percentColor = ratio !== null && ratio >= 0.9
           ? 'var(--dsw-alias-state-error-primary)'
           : ratio !== null && ratio >= 0.7
@@ -636,6 +656,9 @@ window.__ModuleLoader__.load({
           ? (limit === null ? t('unknownUsage') : `—/${formatNumber(limit)}`)
           : `${formatNumber(used)}/${limit === null ? '—' : formatNumber(limit)}`;
         const isStale = window.state === 'stale';
+        const fillWidth = ratio === null || ratio <= 0
+          ? '0%'
+          : `max(6px, ${Math.min(100, Math.max(0, ratio * 100))}%)`;
         const titleParts = [label, valueText];
         if (percent) titleParts.push(percent);
         if (remaining !== null) titleParts.push(`${t('remaining')} ${formatNumber(remaining)}`);
@@ -661,23 +684,14 @@ window.__ModuleLoader__.load({
             'aria-valuenow': ratio === null ? undefined : Math.round(Math.min(1, Math.max(0, ratio)) * 100),
             'aria-valuetext': percent || valueText,
           },
-          ratio === null
-            ? null
-            : h('div', {
-              'aria-hidden': true,
-              style: {
-                position: 'absolute',
-                inset: 0,
-                background: 'var(--dsw-alias-state-success-primary)',
-                opacity: 0.22,
-              },
-            }),
+          h('div', { style: STYLE.track, 'aria-hidden': true }),
           h('div', {
             style: {
               position: 'relative',
               height: '100%',
-              width: ratio === null ? '0%' : `${Math.min(100, Math.max(0, ratio * 100))}%`,
+              width: fillWidth,
               background: usedColor,
+              borderRadius: 999,
               transition: 'width 200ms ease',
             },
           })
@@ -685,7 +699,7 @@ window.__ModuleLoader__.load({
         );
       }
 
-      function keyRow(key) {
+      function keyRow(key, index) {
         const windows = Array.isArray(key.windows) ? key.windows : [];
         const byId = new Map(windows.map((window) => [window.id, window]));
         const limited = key.blocked === true || windows.some((window) =>
@@ -693,29 +707,35 @@ window.__ModuleLoader__.load({
           && typeof window.ratio === 'number'
           && window.ratio >= 1);
         const label = typeof key.label === 'string' && key.label ? key.label : key.provider;
+        const displayLabel = key.provider === 'ustc-llm' && label === 'TokenWorks' ? t('tokenworksRow') : label;
         const keyError = key.ok === false ? errorText(key.error, key.errorDetail) : null;
         const issue = keyError || (limited ? t('limited') : null);
 
-        return h(React.Fragment, { key: key.provider },
-          h('div', {
-            style: STYLE.key,
-            title: [key.provider, keyError].filter(Boolean).join(' · '),
-          },
-          h('span', { style: STYLE.keyLabel }, label),
-          key.default || key.provider === defaultProvider
-            ? h('span', { style: STYLE.star, title: t('default') }, '*')
-            : null,
-          issue ? h('span', { style: STYLE.issueDot, title: issue }, '!') : null
-          ),
-          WINDOW_IDS.map((id) => cell(byId.get(id) || {
-            id,
-            state: 'not-configured',
-            source: null,
-            used: null,
-            limit: null,
-            ratio: null,
-            resetAt: null,
-          }))
+        return h('div', {
+          key: key.provider,
+          style: index > 0
+            ? { ...STYLE.keyRow, borderTop: '1px solid var(--dsw-alias-border-l1)' }
+            : STYLE.keyRow,
+        },
+        h('div', {
+          style: STYLE.key,
+          title: [key.provider, label, keyError].filter(Boolean).join(' · '),
+        },
+        h('span', { style: STYLE.keyLabel }, displayLabel),
+        key.default || key.provider === defaultProvider
+          ? h('span', { style: STYLE.star, title: t('default') }, '*')
+          : null,
+        issue ? h('span', { style: STYLE.issueDot, title: issue }, '!') : null
+        ),
+        WINDOW_IDS.map((id) => cell(byId.get(id) || {
+          id,
+          state: 'not-configured',
+          source: null,
+          used: null,
+          limit: null,
+          ratio: null,
+          resetAt: null,
+        }))
         );
       }
 
@@ -754,10 +774,12 @@ window.__ModuleLoader__.load({
         );
       } else {
         body = h(React.Fragment, null,
-          h('div', { style: STYLE.grid },
-            h('div', { key: 'corner' }),
-            WINDOW_IDS.map((id) => h(React.Fragment, { key: id }, windowLegend(id))),
-            keys.map(keyRow)
+          h('div', { style: STYLE.table },
+            h('div', { style: STYLE.legendRow },
+              h('div', { key: 'corner' }),
+              WINDOW_IDS.map((id) => h(React.Fragment, { key: id }, windowLegend(id)))
+            ),
+            keys.map((key, index) => keyRow(key, index))
           ),
           failed.length > 0
             ? h('div', { style: STYLE.footerError },
