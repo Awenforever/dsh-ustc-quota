@@ -1,0 +1,12 @@
+# dsh-ustc-quota: one Host row. The Client half is declared in package.json.
+#
+# Provider discovery is automatic: every @deepseek-ai/dsh-llm-pi-ai provider
+# whose baseURL matches one of the USTC gateways below becomes a key row.
+# Add a `providers` map here only when your deployment cannot be discovered
+# from a profile config row; see README.md for the shape.
+- insert:
+    - id: dsh-ustc-quota
+      name: dsh-ustc-quota
+      config:
+        baseURLs:
+          - https://api.llm.ustc.edu.cn
