@@ -31,6 +31,7 @@ window.__ModuleLoader__.load({
       window12h: '12h',
       window24h: '24h',
       resetAt: '重置',
+      remaining: '剩余',
       sourceKey: '密钥级',
       sourceUser: '用户级',
       sourceCache: '上次查询',
@@ -70,6 +71,7 @@ window.__ModuleLoader__.load({
       window12h: '12h',
       window24h: '24h',
       resetAt: 'resets',
+      remaining: 'remaining',
       sourceKey: 'key-level',
       sourceUser: 'user-level',
       sourceCache: 'cached',
@@ -249,8 +251,9 @@ window.__ModuleLoader__.load({
         whiteSpace: 'nowrap',
       },
       bar: {
-        height: 3,
-        borderRadius: 1.5,
+        position: 'relative',
+        height: 4,
+        borderRadius: 2,
         background: 'var(--dsw-alias-bg-layer-2)',
         overflow: 'hidden',
       },
@@ -550,19 +553,26 @@ window.__ModuleLoader__.load({
 
         const ratio = typeof window.ratio === 'number' && Number.isFinite(window.ratio) ? window.ratio : null;
         const percent = formatPercent(ratio);
-        const color = ratio !== null && ratio >= 1
+        const usedColor = ratio !== null && ratio >= 0.9
           ? 'var(--dsw-alias-state-error-primary)'
           : ratio !== null && ratio >= 0.7
             ? 'var(--dsw-alias-state-warn-primary)'
-            : 'var(--dsw-alias-brand-primary)';
+            : 'var(--dsw-alias-label-primary)';
+        const percentColor = ratio !== null && ratio >= 0.9
+          ? 'var(--dsw-alias-state-error-primary)'
+          : ratio !== null && ratio >= 0.7
+            ? 'var(--dsw-alias-state-warn-primary)'
+            : 'var(--dsw-alias-label-secondary)';
         const used = typeof window.used === 'number' && Number.isFinite(window.used) ? window.used : null;
         const limit = typeof window.limit === 'number' && Number.isFinite(window.limit) ? window.limit : null;
+        const remaining = used !== null && limit !== null ? Math.max(0, limit - used) : null;
         const valueText = used === null
           ? (limit === null ? t('unknownUsage') : `—/${formatNumber(limit)}`)
           : `${formatNumber(used)}/${limit === null ? '—' : formatNumber(limit)}`;
         const isStale = window.state === 'stale';
         const titleParts = [label, valueText];
         if (percent) titleParts.push(percent);
+        if (remaining !== null) titleParts.push(`${t('remaining')} ${formatNumber(remaining)}`);
         if (window.resetAt) {
           const clock = formatClock(window.resetAt);
           const countdown = formatCountdown(window.resetAt, now);
@@ -574,10 +584,10 @@ window.__ModuleLoader__.load({
         return h('div', { style: STYLE.cell, title: titleParts.join(' · ') },
           h('div', { style: STYLE.valueLine },
             h('span', { style: STYLE.value }, `${isStale ? '≈ ' : ''}${valueText}`),
-            percent ? h('span', { style: STYLE.percent }, percent) : null
+            percent ? h('span', { style: { ...STYLE.percent, color: percentColor } }, percent) : null
           ),
           h('div', {
-            style: STYLE.bar,
+            style: { ...STYLE.bar, opacity: isStale ? 0.55 : 1 },
             role: 'progressbar',
             'aria-label': label,
             'aria-valuemin': 0,
@@ -585,12 +595,23 @@ window.__ModuleLoader__.load({
             'aria-valuenow': ratio === null ? undefined : Math.round(Math.min(1, Math.max(0, ratio)) * 100),
             'aria-valuetext': percent || valueText,
           },
+          ratio === null
+            ? null
+            : h('div', {
+              'aria-hidden': true,
+              style: {
+                position: 'absolute',
+                inset: 0,
+                background: 'var(--dsw-alias-state-success-primary)',
+                opacity: 0.22,
+              },
+            }),
           h('div', {
             style: {
+              position: 'relative',
               height: '100%',
               width: ratio === null ? '0%' : `${Math.min(100, Math.max(0, ratio * 100))}%`,
-              background: color,
-              opacity: isStale ? 0.55 : 1,
+              background: usedColor,
               transition: 'width 200ms ease',
             },
           })

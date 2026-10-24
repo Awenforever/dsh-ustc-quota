@@ -32,7 +32,7 @@ github:Awenforever/dsh-ustc-quota
 固定版本（推荐，避免默认分支后续变动）：
 
 ```text
-github:Awenforever/dsh-ustc-quota#v1.0.1
+github:Awenforever/dsh-ustc-quota#v1.0.2
 ```
 
 或者用你已有的安装方式指定同一目录/仓库：
@@ -49,7 +49,7 @@ target = github:Awenforever/dsh-ustc-quota
 TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deepseek-ai/dsh-plugin-manager`：
 
 1. 在左侧栏打开 **插件** → **安装插件**；
-2. 填入 `github:Awenforever/dsh-ustc-quota#v1.0.1`；
+2. 填入 `github:Awenforever/dsh-ustc-quota#v1.0.2`；
 3. 按提示重启/刷新词元工坊；
 4. 用学校统一身份登录后，卡片会自动出现。
 
@@ -80,7 +80,7 @@ key-b   0.3/30    1%       0.3/70    0%        63.8/100  64%
 key-c   8.7/30   29%       8.7/70   12%        11.1/100  11%
 ```
 
-- 进度条按**已用比例**填充；≥70% 黄色，≥90% 红色；
+- 进度条是双色的：**淡绿色 = 剩余可用，深色 = 已用**；已用部分 ≥70% 变黄、≥90% 变红，剩余绿色段会同步缩短；用量未知时用中性底色，不假装满格；单元格悬停还能看到精确剩余值；
 - 列头显示重置时刻和倒计时；单元格悬停显示精确时间、数据源和完整数值；
 - 额度窗口刚好重置时显示“重置中…”，不会把旧用量当成当前用量；
 - 单把 Key 失败只影响该行；有 5 分钟内旧数据时保留 dimmed 数据并标记错误；
