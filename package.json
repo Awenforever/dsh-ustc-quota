@@ -1,6 +1,6 @@
 {
   "name": "dsh-ustc-quota",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "type": "module",
   "description": "Live 3h/12h/24h USTC token quota card in the DSH sidebar (works with the USTC TokenWorks distribution).",

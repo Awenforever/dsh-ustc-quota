@@ -9,7 +9,7 @@ window.__ModuleLoader__.load({
     const SESSION_PROBE_ID = 'ustc-quota-session-probe';
     const ENDPOINT = 'plugins/dsh-ustc-quota/snapshot';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.0.7';
+    const CLIENT_VERSION = '1.0.8';
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
 
@@ -50,6 +50,7 @@ window.__ModuleLoader__.load({
       tokenworksRow: '词元',
       default: '默认',
       currentKey: '当前对话使用',
+      nextReset: '下一次重置',
       resetting: '重置中…',
       notConfigured: '未配置',
       unknownUsage: '用量未知',
@@ -92,6 +93,7 @@ window.__ModuleLoader__.load({
       tokenworksRow: 'Tokens',
       default: 'default',
       currentKey: 'used by this conversation',
+      nextReset: 'next reset',
       resetting: 'Resetting…',
       notConfigured: 'not set',
       unknownUsage: 'usage unknown',
@@ -699,9 +701,10 @@ window.__ModuleLoader__.load({
           }
         }
         const title = candidates.length > 0
-          ? candidates
-            .map((window) => `${window.id}: ${window.resetAt ? formatFull(window.resetAt) : t('notConfigured')}`)
-            .join('\n')
+          ? [
+            `${t('nextReset')}: ${resetText}`,
+            ...candidates.map((window) => `${window.id}: ${window.resetAt ? formatFull(window.resetAt) : t('notConfigured')}`),
+          ].join('\n')
           : label;
         return h('div', { style: STYLE.legendCell, title },
           h('div', { style: STYLE.legendName }, label),
@@ -818,7 +821,9 @@ window.__ModuleLoader__.load({
         isCurrent
           ? h('span', {
             style: STYLE.star,
-            title: typeof currentProvider === 'string' ? t('currentKey') : t('default'),
+            title: typeof currentProvider === 'string'
+              ? `${t('currentKey')} · ${currentProvider}`
+              : t('default'),
           }, '*')
           : null,
         issue ? h('span', { style: STYLE.issueDot, title: issue }, '!') : null
