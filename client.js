@@ -7,6 +7,9 @@ window.__ModuleLoader__.load({
     const SLOT = 'sidebar.footer.action';
     const ENDPOINT = 'plugins/dsh-ustc-quota/snapshot';
     const WINDOW_IDS = ['3h', '12h', '24h'];
+    const CLIENT_VERSION = '1.0.5';
+    const CLIENT_VERSION_KEY = `${NS}:client-version`;
+    const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
 
     const zh = {
       title: 'USTC 词元额度',
@@ -778,9 +781,36 @@ window.__ModuleLoader__.load({
       );
     }
 
+    // A newly installed/updated client module may be HMR-loaded into an
+    // already-running page. Reload that page once so the new sidebar layout is
+    // applied from a clean boot. A fresh document already has this bundle, and
+    // sessionStorage prevents a reload loop if localStorage is unavailable.
+    function reloadOnceAfterClientUpdate() {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+      try {
+        if (localStorage.getItem(CLIENT_VERSION_KEY) === CLIENT_VERSION) return;
+        localStorage.setItem(CLIENT_VERSION_KEY, CLIENT_VERSION);
+        if (typeof performance !== 'undefined' && performance.now() < 10000) return;
+        if (typeof sessionStorage !== 'undefined') {
+          if (sessionStorage.getItem(CLIENT_RELOAD_KEY) === CLIENT_VERSION) return;
+          sessionStorage.setItem(CLIENT_RELOAD_KEY, CLIENT_VERSION);
+        }
+        setTimeout(() => {
+          try {
+            window.location.reload();
+          } catch {
+            // Reload blocked by the carrier; the card is already registered.
+          }
+        }, 120);
+      } catch {
+        // Storage/reload unavailable: keep the current page.
+      }
+    }
+
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
+        reloadOnceAfterClientUpdate();
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-ustc-quota: locale dictionaries');
         const t = ctx.locale.bind(NS);
         fallbackT = t;
