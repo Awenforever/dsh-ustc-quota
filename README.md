@@ -32,7 +32,7 @@ github:Awenforever/dsh-ustc-quota
 固定版本（推荐，避免默认分支后续变动）：
 
 ```text
-github:Awenforever/dsh-ustc-quota#v1.0.3
+github:Awenforever/dsh-ustc-quota#v1.0.4
 ```
 
 或者用你已有的安装方式指定同一目录/仓库：
@@ -49,13 +49,13 @@ target = github:Awenforever/dsh-ustc-quota
 TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deepseek-ai/dsh-plugin-manager`：
 
 1. 在左侧栏打开 **插件** → 点右上角 **+ 添加插件**；
-2. 填入 `github:Awenforever/dsh-ustc-quota#v1.0.3`；
+2. 填入 `github:Awenforever/dsh-ustc-quota#v1.0.4`；
 3. 按提示刷新页面；**不需要重启词元工坊**；
 4. 用学校统一身份登录后，卡片会自动出现。
 
 > 词元工坊插件页的「官方」只列出发行版自带的插件；第三方插件（包括本插件）不会出现在「官方」里，安装后会出现在「已安装」区域。这是正常的，不是没有装上。
 
-> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.0.3；v1.0.3 已修复旧包 `package.json` 的 BOM 问题。不需要重启词元工坊。
+> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.0.4；v1.0.4 已修复旧包 `package.json` 的 BOM 问题。不需要重启词元工坊。
 
 TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
@@ -70,6 +70,8 @@ TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 ## 显示效果
 
 卡片独占侧边栏底部的一整行：TokenWorks 的「更新」按钮或 DSH 的 Cordis 按钮留在上一行，不会被并排挤压；卡片内部的三列也不会被截断。
+
+> v1.0.4 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.0.4，并刷新一次页面让新的 client bundle 生效。
 
 每把 Key（TokenWorks 下是当前账户）一行，三列：
 

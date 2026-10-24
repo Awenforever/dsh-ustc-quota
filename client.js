@@ -369,19 +369,75 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // The sidebar footer may put slot occupants in per-entry cells. Collapse the
-    // cells that contain only this card, then make the real footer row wrap:
-    // existing actions (TokenWorks 更新 / DSH Cordis) keep the first line, the
-    // quota card takes a full line below them instead of being squeezed beside.
-    const CONTAINER_CSS = `
-      :has(> [data-ustc-quota-root]):not(:has(> :not([data-ustc-quota-root]))) { display: contents !important; }
-      :has(> :has(> [data-ustc-quota-root])):not(:has(> :not(:has(> [data-ustc-quota-root])))) { display: contents !important; }
-      :has(> [data-ustc-quota-root]),
-      :has(> :has(> [data-ustc-quota-root])),
-      :has(> :has(> :has(> [data-ustc-quota-root]))) { flex-wrap: wrap !important; }
-      :has(> [data-ustc-quota-root]),
-      :has(> :has(> [data-ustc-quota-root])) { width: 100% !important; min-width: 0 !important; }
-    `;
+    // The sidebar footer is a flex row shared with TokenWorks' 更新 button or
+    // DSH's Cordis button. Global <style>/:has rules are not reliable on every
+    // carrier, so after mount we collapse the slot cells that contain only this
+    // card and make the real footer row wrap. Inline !important values are
+    // restored when the card unmounts.
+    function applyFooterLayout(root) {
+      const saved = [];
+      const apply = (el, property, value) => {
+        const previous = el.style.getPropertyValue(property);
+        const priority = el.style.getPropertyPriority(property);
+        saved.push({ el, property, previous, priority });
+        el.style.setProperty(property, value, 'important');
+      };
+      const restore = () => {
+        for (const item of saved.reverse()) {
+          if (item.previous) item.el.style.setProperty(item.property, item.previous, item.priority);
+          else item.el.style.removeProperty(item.property);
+        }
+      };
+      try {
+        const classOf = (el) => typeof el.className === 'string' ? el.className : '';
+        let footer = null;
+        for (let node = root.parentElement; node && node !== document.body; node = node.parentElement) {
+          if (classOf(node).includes('footerActions')) { footer = node; break; }
+        }
+        if (!footer) {
+          for (let node = root.parentElement; node && node !== document.body; node = node.parentElement) {
+            const style = getComputedStyle(node);
+            const hasOther = [...node.children].some((child) => child !== root && !child.contains(root));
+            if (hasOther && (style.display.includes('flex') || style.display.includes('grid'))) { footer = node; break; }
+          }
+        }
+        if (!footer) return restore;
+        const chain = [];
+        for (let node = root.parentElement; node && node !== footer && node !== document.body && chain.length < 6; node = node.parentElement) {
+          chain.push(node);
+        }
+        for (const node of chain) {
+          const onlyCard = [...node.children].every((child) => child === root || child.contains(root));
+          if (onlyCard) {
+            apply(node, 'display', 'contents');
+          } else {
+            apply(node, 'width', '100%');
+            apply(node, 'flex-basis', '100%');
+            apply(node, 'min-width', '0');
+            apply(node, 'overflow', 'visible');
+            const style = getComputedStyle(node);
+            if (style.display.includes('flex')) apply(node, 'flex-wrap', 'wrap');
+            if (style.display.includes('grid')) apply(node, 'grid-template-columns', '1fr');
+          }
+        }
+        apply(footer, 'flex-wrap', 'wrap');
+        apply(footer, 'width', '100%');
+        apply(footer, 'height', 'auto');
+        apply(footer, 'max-height', 'none');
+        apply(footer, 'overflow', 'visible');
+        const footerStyle = getComputedStyle(footer);
+        if (footerStyle.display.includes('grid')) apply(footer, 'grid-template-columns', '1fr');
+        const parent = footer.parentElement;
+        if (parent && parent !== document.body) {
+          const parentStyle = getComputedStyle(parent);
+          if (parentStyle.display.includes('flex')) apply(parent, 'flex-wrap', 'wrap');
+          if (parentStyle.display.includes('grid')) apply(parent, 'grid-template-columns', '1fr');
+        }
+      } catch {
+        // The card still renders; a carrier-specific footer simply stays as-is.
+      }
+      return restore;
+    }
 
     function QuotaStrip(props) {
       const t = typeof props.t === 'function' ? props.t : fallbackT;
@@ -392,6 +448,7 @@ window.__ModuleLoader__.load({
       const [now, setNow] = React.useState(() => Date.now());
       const requestSeq = React.useRef(0);
       const cancelledRef = React.useRef(false);
+      const rootRef = React.useRef(null);
 
       const load = React.useCallback(async (force) => {
         const seq = ++requestSeq.current;
@@ -471,6 +528,12 @@ window.__ModuleLoader__.load({
           document.removeEventListener('visibilitychange', onVisibility);
         };
       }, [load]);
+
+      React.useLayoutEffect(() => {
+        const root = rootRef.current;
+        if (!root) return;
+        return applyFooterLayout(root);
+      }, [props.wide]);
 
       const keys = snapshot && Array.isArray(snapshot.keys) ? snapshot.keys : [];
       const warnings = snapshot && Array.isArray(snapshot.warnings) ? snapshot.warnings : [];
@@ -705,11 +768,11 @@ window.__ModuleLoader__.load({
 
       return h('div', {
         style: STYLE.root,
+        ref: rootRef,
         role: 'group',
         'aria-label': t('title'),
         'data-ustc-quota-root': '',
       },
-      h('style', null, CONTAINER_CSS),
       header,
       body
       );
