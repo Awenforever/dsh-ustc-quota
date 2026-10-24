@@ -5,11 +5,38 @@ window.__ModuleLoader__.load({
     const h = React.createElement;
     const NS = 'dsh-ustc-quota';
     const SLOT = 'sidebar.footer.action';
+    const SESSION_SLOT = 'conversation.composer.dock';
+    const SESSION_PROBE_ID = 'ustc-quota-session-probe';
     const ENDPOINT = 'plugins/dsh-ustc-quota/snapshot';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.0.6';
+    const CLIENT_VERSION = '1.0.7';
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
+
+    let clientCtx = null;
+    let activeSessionId = null;
+    const activeSessionListeners = new Set();
+
+    function setActiveSession(id) {
+      if (activeSessionId === id) return;
+      activeSessionId = id;
+      for (const listener of activeSessionListeners) listener();
+    }
+
+    function clearActiveSession(id) {
+      if (activeSessionId !== id) return;
+      activeSessionId = null;
+      for (const listener of activeSessionListeners) listener();
+    }
+
+    function subscribeActiveSession(listener) {
+      activeSessionListeners.add(listener);
+      return () => activeSessionListeners.delete(listener);
+    }
+
+    function getActiveSession() {
+      return activeSessionId;
+    }
 
     const zh = {
       title: 'USTC 词元额度',
@@ -22,6 +49,7 @@ window.__ModuleLoader__.load({
       tokenworksNotReadyHint: '登录词元工坊后会自动读取学校模型额度',
       tokenworksRow: '词元',
       default: '默认',
+      currentKey: '当前对话使用',
       resetting: '重置中…',
       notConfigured: '未配置',
       unknownUsage: '用量未知',
@@ -63,6 +91,7 @@ window.__ModuleLoader__.load({
       tokenworksNotReadyHint: 'Sign in to TokenWorks to load school model quota',
       tokenworksRow: 'Tokens',
       default: 'default',
+      currentKey: 'used by this conversation',
       resetting: 'Resetting…',
       notConfigured: 'not set',
       unknownUsage: 'usage unknown',
@@ -469,6 +498,66 @@ window.__ModuleLoader__.load({
       return restore;
     }
 
+    // The sidebar footer is global, while the key actually in use is chosen per
+    // conversation. A null occupant in the conversation composer dock captures
+    // the open session id; the card then reads that session's durable
+    // modelSelection projection, so switching conversations moves the star.
+    function SessionProbe(props) {
+      const id = typeof props.sessionId === 'string' ? props.sessionId : null;
+      React.useLayoutEffect(() => {
+        setActiveSession(id);
+        return () => clearActiveSession(id);
+      }, [id]);
+      return null;
+    }
+
+    function useActiveSessionProvider() {
+      const id = React.useSyncExternalStore(subscribeActiveSession, getActiveSession, getActiveSession);
+      const [provider, setProvider] = React.useState(null);
+
+      React.useEffect(() => {
+        if (!id || clientCtx === null) {
+          setProvider(null);
+          return;
+        }
+        const sessions = clientCtx.get('sessions');
+        if (!sessions || typeof sessions.binding !== 'function') {
+          setProvider(null);
+          return;
+        }
+        let binding;
+        try {
+          binding = sessions.binding(id);
+        } catch {
+          setProvider(null);
+          return;
+        }
+        const projections = binding && binding.session ? binding.session.projections : null;
+        let face;
+        try {
+          face = projections && typeof projections.faceOf === 'function'
+            ? projections.faceOf('modelSelection')
+            : null;
+        } catch {
+          setProvider(null);
+          return;
+        }
+        if (!face || typeof face.getSnapshot !== 'function' || typeof face.subscribe !== 'function') {
+          setProvider(null);
+          return;
+        }
+        const read = () => {
+          const value = face.getSnapshot();
+          const next = value && value.next;
+          setProvider(next && typeof next.provider === 'string' ? next.provider : null);
+        };
+        read();
+        return face.subscribe(read);
+      }, [id]);
+
+      return provider;
+    }
+
     function QuotaStrip(props) {
       const t = typeof props.t === 'function' ? props.t : fallbackT;
       const [snapshot, setSnapshot] = React.useState(null);
@@ -479,6 +568,7 @@ window.__ModuleLoader__.load({
       const requestSeq = React.useRef(0);
       const cancelledRef = React.useRef(false);
       const rootRef = React.useRef(null);
+      const activeProvider = useActiveSessionProvider();
 
       const load = React.useCallback(async (force) => {
         const seq = ++requestSeq.current;
@@ -699,7 +789,7 @@ window.__ModuleLoader__.load({
         );
       }
 
-      function keyRow(key, index) {
+      function keyRow(key, index, currentProvider) {
         const windows = Array.isArray(key.windows) ? key.windows : [];
         const byId = new Map(windows.map((window) => [window.id, window]));
         const limited = key.blocked === true || windows.some((window) =>
@@ -710,6 +800,9 @@ window.__ModuleLoader__.load({
         const displayLabel = key.provider === 'ustc-llm' && label === 'TokenWorks' ? t('tokenworksRow') : label;
         const keyError = key.ok === false ? errorText(key.error, key.errorDetail) : null;
         const issue = keyError || (limited ? t('limited') : null);
+        const isCurrent = typeof currentProvider === 'string'
+          ? key.provider === currentProvider
+          : key.default || key.provider === defaultProvider;
 
         return h('div', {
           key: key.provider,
@@ -722,8 +815,11 @@ window.__ModuleLoader__.load({
           title: [key.provider, label, keyError].filter(Boolean).join(' · '),
         },
         h('span', { style: STYLE.keyLabel }, displayLabel),
-        key.default || key.provider === defaultProvider
-          ? h('span', { style: STYLE.star, title: t('default') }, '*')
+        isCurrent
+          ? h('span', {
+            style: STYLE.star,
+            title: typeof currentProvider === 'string' ? t('currentKey') : t('default'),
+          }, '*')
           : null,
         issue ? h('span', { style: STYLE.issueDot, title: issue }, '!') : null
         ),
@@ -779,7 +875,7 @@ window.__ModuleLoader__.load({
               h('div', { key: 'corner' }),
               WINDOW_IDS.map((id) => h(React.Fragment, { key: id }, windowLegend(id)))
             ),
-            keys.map((key, index) => keyRow(key, index))
+            keys.map((key, index) => keyRow(key, index, activeProvider))
           ),
           failed.length > 0
             ? h('div', { style: STYLE.footerError },
@@ -832,10 +928,16 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
+        clientCtx = ctx;
         reloadOnceAfterClientUpdate();
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-ustc-quota: locale dictionaries');
         const t = ctx.locale.bind(NS);
         fallbackT = t;
+        ctx.slots.inject(SESSION_SLOT, () => ctx.slots.register({
+          name: SESSION_SLOT,
+          id: SESSION_PROBE_ID,
+          order: -1000,
+        }, SessionProbe));
         ctx.slots.inject(SLOT, () => ctx.slots.register({
           name: SLOT,
           id: 'ustc-quota',
