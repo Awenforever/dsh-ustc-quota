@@ -193,6 +193,12 @@ export class UpdateService {
       return { ok: false, error: 'provider-unavailable', spec: info.spec };
     }
     const result = await provider.apply(info.spec, { version: info.latestVersion });
+    if (!result || result.changed === false) {
+      return { ok: false, error: 'not-changed', spec: info.spec, result };
+    }
+    if (result.application === 'failed' || result.error) {
+      return { ok: false, error: 'apply-failed', spec: info.spec, result };
+    }
     return {
       ok: true,
       spec: info.spec,
