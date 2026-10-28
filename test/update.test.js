@@ -114,6 +114,30 @@ test('UpdateService reports a newer release and caches the check', async () => {
   assert.equal(fetchImpl.calls.count, 1);
 });
 
+test('UpdateService applies the latest tarball through the plugin manager', async () => {
+  const calls = [];
+  const manager = {
+    async installBundle(spec, options) {
+      calls.push({ spec, options });
+      return { changed: true, application: 'applied' };
+    },
+  };
+  const fetchImpl = fetchWith(release('1.1.2'));
+  const service = new UpdateService(ctxWith({ pluginManager: manager }), {
+    currentVersion: '1.1.1',
+    fetchImpl,
+    now: () => 2000,
+  });
+  const result = await service.apply();
+  assert.equal(result.ok, true);
+  assert.equal(result.spec, 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v1.1.2.tar.gz');
+  assert.equal(result.provider.id, 'dsh-plugin-manager');
+  assert.deepEqual(calls[0], {
+    spec: 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v1.1.2.tar.gz',
+    options: { saveExact: true },
+  });
+});
+
 test('UpdateService force bypasses the cache and handles an up-to-date release', async () => {
   const fetchImpl = fetchWith(release('1.1.0'));
   const service = new UpdateService(ctxWith(), {
@@ -127,3 +151,4 @@ test('UpdateService force bypasses the cache and handles an up-to-date release',
   assert.equal(result.provider.id, 'manual');
   assert.equal(fetchImpl.calls.count, 1);
 });
+

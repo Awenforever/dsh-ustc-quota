@@ -7,6 +7,8 @@
  * the Client half. Keys never leave this process.
  */
 
+import { randomUUID } from 'node:crypto';
+
 import {
   WINDOW_IDS,
   discoverProvidersFromRows,
@@ -18,7 +20,9 @@ import { UpdateService } from './update.js';
 
 const ROUTE_PATH = '/plugins/dsh-ustc-quota/snapshot';
 const UPDATE_PATH = '/plugins/dsh-ustc-quota/update';
-const PLUGIN_VERSION = '1.1.1';
+const UPDATE_APPLY_PATH = '/plugins/dsh-ustc-quota/update/apply';
+const UPDATE_TOKEN_TTL_MS = 5 * 60 * 1000;
+const PLUGIN_VERSION = '1.1.2';
 const KEY_INFO_PATH = 'key/info';
 const USER_INFO_PATH = 'user/info';
 const DISCOVERY_TTL_MS = 30000;
@@ -34,6 +38,7 @@ export function apply(ctx, config) {
   const settings = normalizeConfig(config);
   const reader = createReader(ctx, settings);
   const updates = new UpdateService(ctx, { currentVersion: PLUGIN_VERSION });
+  const updateTokens = new Map();
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
@@ -44,8 +49,14 @@ export function apply(ctx, config) {
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: UPDATE_PATH,
-    handler: (request, response) => handleUpdateCheck(ctx, updates, request, response),
+    handler: (request, response) => handleUpdateCheck(ctx, updates, updateTokens, request, response),
   }), 'dsh-ustc-quota: update check route');
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: UPDATE_APPLY_PATH,
+    handler: (request, response) => handleUpdateApply(ctx, updates, updateTokens, request, response),
+  }), 'dsh-ustc-quota: update apply route');
 }
 
 function createReader(ctx, settings) {
@@ -426,7 +437,7 @@ async function handleSnapshot(ctx, reader, request, response) {
   }
 }
 
-async function handleUpdateCheck(ctx, updates, request, response) {
+async function handleUpdateCheck(ctx, updates, updateTokens, request, response) {
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     writeJson(response, 405, { error: 'method-not-allowed' }, { allow: 'GET, HEAD' });
     return;
@@ -455,6 +466,9 @@ async function handleUpdateCheck(ctx, updates, request, response) {
       response.end();
       return;
     }
+    if (result.updateAvailable && result.canApply) {
+      result.applyToken = issueUpdateToken(updateTokens, result);
+    }
     writeJson(response, 200, { ...result, pluginVersion: PLUGIN_VERSION });
   } catch {
     if (request.method === 'HEAD') {
@@ -469,6 +483,63 @@ async function handleUpdateCheck(ctx, updates, request, response) {
       error: 'update-check-failed',
     });
   }
+}
+
+async function handleUpdateApply(ctx, updates, updateTokens, request, response) {
+  if (request.method !== 'POST') {
+    writeJson(response, 405, { error: 'method-not-allowed' }, { allow: 'POST' });
+    return;
+  }
+
+  const token = typeof request.headers['x-dsh-update-token'] === 'string'
+    ? request.headers['x-dsh-update-token'].trim()
+    : '';
+  const record = token ? updateTokens.get(token) : null;
+  if (!record || record.expires <= Date.now()) {
+    if (token) updateTokens.delete(token);
+    writeJson(response, 403, { error: 'invalid-update-token' });
+    return;
+  }
+  updateTokens.delete(token);
+
+  const connection = ctx.get('connection');
+  if (!isDesktopHost(ctx) && connection && typeof connection.requestRejection === 'function') {
+    let rejection;
+    try {
+      rejection = connection.requestRejection(request);
+    } catch {
+      rejection = 403;
+    }
+    if (rejection !== undefined && rejection !== null) {
+      writeJson(response, rejection, { error: 'unauthorized' });
+      return;
+    }
+  }
+
+  try {
+    const outcome = await updates.apply(record);
+    writeJson(response, 200, { ...outcome, pluginVersion: PLUGIN_VERSION });
+  } catch {
+    writeJson(response, 200, {
+      ok: false,
+      error: 'update-apply-failed',
+      pluginVersion: PLUGIN_VERSION,
+    });
+  }
+}
+
+function issueUpdateToken(updateTokens, result) {
+  const now = Date.now();
+  for (const [key, value] of updateTokens) {
+    if (value.expires <= now) updateTokens.delete(key);
+  }
+  const token = randomUUID();
+  updateTokens.set(token, {
+    spec: result.spec,
+    latestVersion: result.latestVersion,
+    expires: now + UPDATE_TOKEN_TTL_MS,
+  });
+  return token;
 }
 
 function writeJson(response, status, body, extraHeaders) {

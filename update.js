@@ -182,6 +182,26 @@ export class UpdateService {
     this.inFlight = null;
   }
 
+  async apply(expected) {
+    const info = await this.check(false);
+    if (!info.updateAvailable) return { ok: false, error: 'up-to-date' };
+    if (expected && typeof expected.spec === 'string' && expected.spec !== info.spec) {
+      return { ok: false, error: 'stale-update' };
+    }
+    const provider = resolveUpdateProvider(this.ctx);
+    if (!provider.canApply) {
+      return { ok: false, error: 'provider-unavailable', spec: info.spec };
+    }
+    const result = await provider.apply(info.spec, { version: info.latestVersion });
+    return {
+      ok: true,
+      spec: info.spec,
+      latestVersion: info.latestVersion,
+      provider: serializeProvider(provider),
+      result,
+    };
+  }
+
   result(info, provider) {
     return {
       ...info,

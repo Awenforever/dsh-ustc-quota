@@ -9,8 +9,9 @@ window.__ModuleLoader__.load({
     const SESSION_PROBE_ID = 'ustc-quota-session-probe';
     const ENDPOINT = 'plugins/dsh-ustc-quota/snapshot';
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
+    const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.1';
+    const CLIENT_VERSION = '1.1.2';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -807,26 +808,17 @@ window.__ModuleLoader__.load({
               if (body && body.ok !== false) info = normalizeUpdateInfo(body);
             }
           } catch {
-            // Fall through to the official plugin-manager inspection path.
-          }
-          if (!info) {
-            try {
-              info = await inspectUpdateFallback();
-            } catch {
-              info = null;
-            }
+            info = null;
           }
           if (!info) {
             if (manual) showUpdateNotice(t('updateFailed'));
             return;
           }
-          const updater = resolveClientUpdater();
           const available = isNewerVersion(info.latestVersion, CLIENT_VERSION);
           setUpdateInfo({
             ...info,
             updateAvailable: available,
-            canApply: available && updater.canApply,
-            provider: { id: updater.id, canApply: updater.canApply },
+            canApply: available && info.canApply === true,
           });
           if (manual) showUpdateNotice(available ? t('updateAvailable') : t('updateUpToDate'));
         } catch {
@@ -939,8 +931,7 @@ window.__ModuleLoader__.load({
 
       async function applyUpdate() {
         if (!updateInfo || updateApplying) return;
-        const updater = resolveClientUpdater();
-        if (!updater.canApply) {
+        if (!updateInfo.applyToken) {
           setUpdateError(t('updateNoProvider'));
           return;
         }
@@ -948,7 +939,21 @@ window.__ModuleLoader__.load({
         setUpdateError('');
         setUpdateResult('');
         try {
-          const result = await updater.apply(updateInfo.spec, { version: updateInfo.latestVersion });
+          const response = await fetch(UPDATE_APPLY_ENDPOINT, {
+            method: 'POST',
+            cache: 'no-store',
+            headers: {
+              accept: 'application/json',
+              'x-dsh-update-token': updateInfo.applyToken,
+            },
+          });
+          const body = await response.json().catch(() => null);
+          if (!response.ok || !body || body.ok !== true) {
+            setUpdateApplying(false);
+            setUpdateError(`${t('updateFailed')}${body && body.error ? `: ${body.error}` : ''}`);
+            return;
+          }
+          const result = body.result;
           if (result && result.changed === false) {
             setUpdateApplying(false);
             setUpdateResult(t('updateUpToDate'));
@@ -1330,66 +1335,11 @@ window.__ModuleLoader__.load({
         latestVersion: latest,
         spec: typeof value.spec === 'string' && value.spec
           ? value.spec
-          : `github:Awenforever/dsh-ustc-quota#v${latest}`,
+          : `https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v${latest}.tar.gz`,
         releaseUrl: typeof value.releaseUrl === 'string' && value.releaseUrl
           ? value.releaseUrl
           : `https://github.com/Awenforever/dsh-ustc-quota/releases/tag/v${latest}`,
         releaseNotes: typeof value.releaseNotes === 'string' ? value.releaseNotes : '',
-      };
-    }
-
-    // Reserved adapter for the upcoming official DSH plugin-update preview.
-    // Current fallback is the official pluginManager Remote; if neither exists,
-    // the modal shows the exact spec for the plugin page.
-    function resolveClientUpdater() {
-      const remote = clientCtx && clientCtx.remote;
-      const official = remote && (remote.pluginUpdates || remote.pluginUpdater);
-      if (official) {
-        const apply = typeof official.applyUpdate === 'function'
-          ? official.applyUpdate.bind(official)
-          : typeof official.update === 'function'
-            ? official.update.bind(official)
-            : null;
-        if (apply) {
-          return {
-            id: 'official-plugin-updates',
-            canApply: true,
-            apply: (spec, meta) => apply({ id: 'dsh-ustc-quota', spec, version: meta && meta.version }),
-          };
-        }
-      }
-      const manager = remote && remote.pluginManager;
-      if (manager && typeof manager.installBundle === 'function') {
-        return {
-          id: 'dsh-plugin-manager',
-          canApply: true,
-          apply: (spec) => manager.installBundle(spec, { saveExact: true }),
-        };
-      }
-      return { id: 'manual', canApply: false, apply: null };
-    }
-
-    async function inspectUpdateFallback() {
-      const updater = resolveClientUpdater();
-      const remote = clientCtx && clientCtx.remote;
-      const manager = remote && remote.pluginManager;
-      if (!manager || typeof manager.inspect !== 'function') return null;
-      const result = await manager.inspect('github:Awenforever/dsh-ustc-quota');
-      if (!result || result.status !== 'accepted' || typeof result.version !== 'string') return null;
-      const latest = result.version.trim().replace(/^v/i, '');
-      if (!latest) return null;
-      return {
-        ok: true,
-        currentVersion: CLIENT_VERSION,
-        latestVersion: latest,
-        updateAvailable: isNewerVersion(latest, CLIENT_VERSION),
-        spec: 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/heads/main.tar.gz',
-        releaseUrl: `https://github.com/Awenforever/dsh-ustc-quota/releases/tag/v${latest}`,
-        releaseName: `v${latest}`,
-        releaseNotes: '',
-        provider: { id: updater.id, canApply: updater.canApply },
-        canApply: updater.canApply,
-        source: 'pluginManager.inspect',
       };
     }
 
@@ -1451,7 +1401,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'remote'],
+      inject: ['slots', 'locale'],
       apply(ctx) {
         clientCtx = ctx;
         reloadOnceAfterClientUpdate();

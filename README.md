@@ -32,7 +32,7 @@ github:Awenforever/dsh-ustc-quota
 固定版本（推荐，避免默认分支后续变动）：
 
 ```text
-github:Awenforever/dsh-ustc-quota#v1.1.1
+github:Awenforever/dsh-ustc-quota#v1.1.2
 ```
 
 或者用你已有的安装方式指定同一目录/仓库：
@@ -42,20 +42,20 @@ plugin_manager install_bundle
 target = github:Awenforever/dsh-ustc-quota
 ```
 
-安装完成后 Host、插件清单和 Client slot 会即时生效。DSH 的 client-hmr 会把新 client 加载进旧页面，插件会**自行刷新一次页面**（每个版本一次）。TokenWorks 的插件页「更新」只应用 Host bundle，已打开的页面不一定会换 client；v1.1.1 起 Host snapshot 带 `pluginVersion`，旧 client 检测到新 Host 版本会自行 `location.reload()` 一次。首次装 v1.1.1 仍需一次页面重载或应用重启来装入这个 watchdog；之后更新不再需要重启。如果载体的页面重载仍然缓存 client module，就只能重启，这是载体限制，不是 quota 数据的问题。
+安装完成后 Host、插件清单和 Client slot 会即时生效。DSH 的 client-hmr 会把新 client 加载进旧页面，插件会**自行刷新一次页面**（每个版本一次）。TokenWorks 的插件页「更新」只应用 Host bundle，已打开的页面不一定会换 client；v1.1.2 起 Host snapshot 带 `pluginVersion`，旧 client 检测到新 Host 版本会自行 `location.reload()` 一次。首次装 v1.1.2 仍需一次页面重载或应用重启来装入这个 watchdog；之后更新不再需要重启。如果载体的页面重载仍然缓存 client module，就只能重启，这是载体限制，不是 quota 数据的问题。
 
 ### TokenWorks（词元工坊）
 
 TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deepseek-ai/dsh-plugin-manager`：
 
 1. 在左侧栏打开 **插件** → 点右上角 **+ 添加插件**；
-2. 填入 `github:Awenforever/dsh-ustc-quota#v1.1.1`；
-3. 安装/更新后插件会在旧页面**自行刷新一次**（每个版本一次）；v1.1.1 首次安装可能需要一次页面重载或应用重启来装入 watchdog，之后 Host 版本变化会自动 reload；若插件页提示刷新，也可以直接刷新；
+2. 填入 `github:Awenforever/dsh-ustc-quota#v1.1.2`；
+3. 安装/更新后插件会在旧页面**自行刷新一次**（每个版本一次）；v1.1.2 首次安装可能需要一次页面重载或应用重启来装入 watchdog，之后 Host 版本变化会自动 reload；若插件页提示刷新，也可以直接刷新；
 4. 用学校统一身份登录后，卡片会自动出现。
 
 > 词元工坊插件页的「官方」只列出发行版自带的插件；第三方插件（包括本插件）不会出现在「官方」里，安装后会出现在「已安装」区域。这是正常的，不是没有装上。
 
-> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.1；v1.1.1 已修复旧包 `package.json` 的 BOM 问题。不需要重启词元工坊。
+> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.2；v1.1.2 已修复旧包 `package.json` 的 BOM 问题。不需要重启词元工坊。
 
 TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
@@ -71,7 +71,7 @@ TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
 卡片独占侧边栏底部的一整行：TokenWorks 的「更新」按钮或 DSH 的 Cordis 按钮留在上一行，不会被并排挤压；卡片内部的三列也不会被截断。
 
-> v1.1.1 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.1，并刷新一次页面让新的 client bundle 生效。
+> v1.1.2 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.2，并刷新一次页面让新的 client bundle 生效。
 
 每把 Key（TokenWorks 下是当前账户）一行，三列：
 
@@ -97,7 +97,7 @@ key-c   8.7/30   29%       8.7/70   12%        11.1/100  11%
 - 标题「USTC 词元额度」右侧显示灰色小字版本号；点击版本号可手动检查更新；
 - 启动时检查一次，之后每 24 小时自动检查一次 GitHub 最新 release；
 - 有新版本时版本号旁出现小红点，点击弹出更新确认弹窗；
-- 当前 DSH 使用官方 `pluginManager` Remote 直接安装最新 release 的 tarball；更新完成后自动重载页面；
+- 当前 DSH 通过宿主的官方 `pluginManager` 更新路由直接安装最新 release 的 tarball；更新完成后自动重载页面；
 - 已预留 `pluginUpdates.applyUpdate({ id, spec, version })` 适配接口，供后续 DSH 官方插件更新预览版接入；接口不可用时回退到 `pluginManager`，再不可用则弹窗显示安装 spec；
 - TokenWorks / 旧 Host 如果暂时没有可用更新接口，弹窗会显示可复制的 spec，仍可走插件页手动安装。
 
