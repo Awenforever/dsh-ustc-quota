@@ -188,13 +188,15 @@ node --check client.js
 node --test test/quota.test.js test/update.test.js
 ```
 
-测试覆盖（29 个 Node 测试）：
+测试覆盖（30 个 Node 测试）：
 
 - DSH 的 Key 级/用户级窗口合并、重置过渡、超限、缺用量；
 - `llm-pi-ai` 配置发现、兜底、去重；
 - TokenWorks 官方快照的窗口映射、同名 Key/账户窗口取约束档、错误缓存和未登录状态；
 - 快照不包含 Key、邮箱、alias；
 - 版本比较、GitHub release 解析、更新 provider 选择、更新缓存与降级。
+
+更完整的 Windows 原生发布验收矩阵、命令和已知的 DSH client-module 启动限制见 [docs/RELEASE_ACCEPTANCE.md](docs/RELEASE_ACCEPTANCE.md)。
 
 ## 许可
 
