@@ -8,8 +8,10 @@ window.__ModuleLoader__.load({
     const SESSION_SLOT = 'conversation.composer.dock';
     const SESSION_PROBE_ID = 'ustc-quota-session-probe';
     const ENDPOINT = 'plugins/dsh-ustc-quota/snapshot';
+    const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.0.9';
+    const CLIENT_VERSION = '1.1.0';
+    const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
     const HOST_VERSION_KEY = `${NS}:host-version-reload`;
@@ -52,6 +54,27 @@ window.__ModuleLoader__.load({
       default: '默认',
       currentKey: '当前对话使用',
       nextReset: '下一次重置',
+      versionCheck: '点击检查更新',
+      updateChecking: '检查中…',
+      updateUpToDate: '已是最新',
+      updateFailed: '检查失败',
+      updateAvailable: '发现新版本',
+      updateTitle: '更新 USTC 词元额度',
+      updateCurrent: '当前版本',
+      updateLatest: '最新版本',
+      updateNotes: '更新说明',
+      updateReleaseLink: '查看发布说明',
+      updateNow: '更新并重载',
+      updateCancel: '取消',
+      updateApplying: '正在更新…',
+      updateApplied: '更新完成，正在刷新…',
+      updateRestart: '已安装，但需要刷新或重启 DSH 才能生效',
+      updateProviderOfficial: '通过 DSH 官方插件更新接口（预览）',
+      updateProviderManager: '通过 DSH 插件管理器（预览接口）',
+      updateProviderManual: '当前载体没有可用的直接更新接口，请在插件页填入下面的 spec',
+      updateNoProvider: '当前载体不支持直接更新，请手动安装',
+      updateCopy: '复制 spec',
+      updateCopied: '已复制',
       resetting: '重置中…',
       notConfigured: '未配置',
       unknownUsage: '用量未知',
@@ -95,6 +118,27 @@ window.__ModuleLoader__.load({
       default: 'default',
       currentKey: 'used by this conversation',
       nextReset: 'next reset',
+      versionCheck: 'check for updates',
+      updateChecking: 'Checking…',
+      updateUpToDate: 'Up to date',
+      updateFailed: 'Update check failed',
+      updateAvailable: 'Update available',
+      updateTitle: 'Update USTC token quota',
+      updateCurrent: 'Current',
+      updateLatest: 'Latest',
+      updateNotes: 'Release notes',
+      updateReleaseLink: 'View release notes',
+      updateNow: 'Update and reload',
+      updateCancel: 'Cancel',
+      updateApplying: 'Updating…',
+      updateApplied: 'Updated, reloading…',
+      updateRestart: 'Installed, but DSH must be refreshed or restarted',
+      updateProviderOfficial: 'Via the DSH official plugin update API (preview)',
+      updateProviderManager: 'Via the DSH plugin manager (preview API)',
+      updateProviderManual: 'This carrier has no direct update API; paste the spec below into the plugin page',
+      updateNoProvider: 'Direct update is unavailable; install manually',
+      updateCopy: 'Copy spec',
+      updateCopied: 'Copied',
       resetting: 'Resetting…',
       notConfigured: 'not set',
       unknownUsage: 'usage unknown',
@@ -158,6 +202,34 @@ window.__ModuleLoader__.load({
         color: 'var(--dsw-alias-label-primary)',
         fontSize: 13,
         letterSpacing: '-0.01em',
+        whiteSpace: 'nowrap',
+      },
+      versionButton: {
+        flex: '0 0 auto',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 2,
+        margin: 0,
+        padding: 0,
+        border: 'none',
+        background: 'transparent',
+        color: 'var(--dsw-alias-label-secondary)',
+        fontSize: 8.5,
+        lineHeight: 1.2,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+      },
+      versionDot: {
+        width: 5,
+        height: 5,
+        borderRadius: '50%',
+        background: 'var(--dsw-alias-state-error-primary)',
+        display: 'inline-block',
+        flex: '0 0 auto',
+      },
+      versionNote: {
+        fontSize: 7.5,
+        color: 'var(--dsw-alias-label-secondary)',
         whiteSpace: 'nowrap',
       },
       meta: {
@@ -318,6 +390,95 @@ window.__ModuleLoader__.load({
         background: 'var(--dsw-alias-state-idle-primary)',
         opacity: 0.24,
         borderRadius: 999,
+      },
+      modalOverlay: {
+        position: 'fixed',
+        inset: 0,
+        zIndex: 10000,
+        background: 'rgba(15, 23, 42, 0.38)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        boxSizing: 'border-box',
+      },
+      modal: {
+        width: 'min(360px, 100%)',
+        maxHeight: '80vh',
+        overflow: 'auto',
+        boxSizing: 'border-box',
+        padding: 14,
+        border: '1px solid var(--dsw-alias-border-l1)',
+        borderRadius: 12,
+        background: 'var(--dsw-alias-bg-layer-1)',
+        boxShadow: '0 18px 48px rgba(15, 23, 42, 0.25)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 9,
+        color: 'var(--dsw-alias-label-primary)',
+      },
+      modalTitle: {
+        fontSize: 13,
+        fontWeight: 700,
+      },
+      modalVersion: {
+        fontSize: 10,
+        color: 'var(--dsw-alias-label-secondary)',
+      },
+      modalNotes: {
+        maxHeight: 120,
+        overflow: 'auto',
+        whiteSpace: 'pre-wrap',
+        fontSize: 9,
+        lineHeight: 1.45,
+        color: 'var(--dsw-alias-label-secondary)',
+        background: 'var(--dsw-alias-bg-layer-2)',
+        borderRadius: 6,
+        padding: '6px 7px',
+      },
+      modalHint: {
+        fontSize: 9,
+        lineHeight: 1.4,
+        color: 'var(--dsw-alias-label-secondary)',
+      },
+      modalError: {
+        fontSize: 9,
+        lineHeight: 1.4,
+        color: 'var(--dsw-alias-state-error-primary)',
+      },
+      modalActions: {
+        display: 'flex',
+        justifyContent: 'flex-end',
+        gap: 6,
+        marginTop: 2,
+      },
+      primaryButton: {
+        border: 'none',
+        borderRadius: 6,
+        background: 'var(--dsw-alias-brand-primary)',
+        color: 'var(--dsw-alias-bg-base)',
+        fontSize: 10,
+        fontWeight: 600,
+        padding: '6px 10px',
+        cursor: 'pointer',
+      },
+      secondaryButton: {
+        border: '1px solid var(--dsw-alias-border-l1)',
+        borderRadius: 6,
+        background: 'transparent',
+        color: 'var(--dsw-alias-label-secondary)',
+        fontSize: 10,
+        padding: '6px 10px',
+        cursor: 'pointer',
+      },
+      specText: {
+        fontFamily: 'monospace',
+        fontSize: 8.5,
+        color: 'var(--dsw-alias-label-secondary)',
+        wordBreak: 'break-all',
+        background: 'var(--dsw-alias-bg-layer-2)',
+        padding: '5px 6px',
+        borderRadius: 6,
       },
       hint: {
         display: 'flex',
@@ -572,6 +733,28 @@ window.__ModuleLoader__.load({
       const cancelledRef = React.useRef(false);
       const rootRef = React.useRef(null);
       const activeProvider = useActiveSessionProvider();
+      const [updateInfo, setUpdateInfo] = React.useState(null);
+      const [updateOpen, setUpdateOpen] = React.useState(false);
+      const [updateChecking, setUpdateChecking] = React.useState(false);
+      const [updateApplying, setUpdateApplying] = React.useState(false);
+      const [updateNotice, setUpdateNotice] = React.useState('');
+      const [updateError, setUpdateError] = React.useState('');
+      const [updateResult, setUpdateResult] = React.useState('');
+      const updateCheckingRef = React.useRef(false);
+      const noticeTimerRef = React.useRef(null);
+
+      const showUpdateNotice = React.useCallback((text) => {
+        if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+        setUpdateNotice(text);
+        noticeTimerRef.current = setTimeout(() => {
+          noticeTimerRef.current = null;
+          setUpdateNotice('');
+        }, 4000);
+      }, []);
+
+      React.useEffect(() => () => {
+        if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+      }, []);
 
       const load = React.useCallback(async (force) => {
         const seq = ++requestSeq.current;
@@ -604,6 +787,73 @@ window.__ModuleLoader__.load({
           if (force && !cancelledRef.current) setRefreshing(false);
         }
       }, []);
+
+      const checkForUpdate = React.useCallback(async (manual) => {
+        if (updateCheckingRef.current) return;
+        updateCheckingRef.current = true;
+        setUpdateChecking(true);
+        if (manual) showUpdateNotice(t('updateChecking'));
+        try {
+          let info = null;
+          try {
+            const url = new URL(UPDATE_ENDPOINT, document.baseURI);
+            if (manual) url.searchParams.set('force', '1');
+            const response = await fetch(url.pathname + url.search, {
+              cache: 'no-store',
+              headers: { accept: 'application/json' },
+            });
+            if (response.ok) {
+              const body = await response.json();
+              if (body && body.ok !== false) info = normalizeUpdateInfo(body);
+            }
+          } catch {
+            // Fall through to the official plugin-manager inspection path.
+          }
+          if (!info) {
+            try {
+              info = await inspectUpdateFallback();
+            } catch {
+              info = null;
+            }
+          }
+          if (!info) {
+            if (manual) showUpdateNotice(t('updateFailed'));
+            return;
+          }
+          const updater = resolveClientUpdater();
+          const available = isNewerVersion(info.latestVersion, CLIENT_VERSION);
+          setUpdateInfo({
+            ...info,
+            updateAvailable: available,
+            canApply: available && updater.canApply,
+            provider: { id: updater.id, canApply: updater.canApply },
+          });
+          if (manual) showUpdateNotice(available ? t('updateAvailable') : t('updateUpToDate'));
+        } catch {
+          if (manual) showUpdateNotice(t('updateFailed'));
+        } finally {
+          updateCheckingRef.current = false;
+          setUpdateChecking(false);
+        }
+      }, [showUpdateNotice, t]);
+
+      React.useEffect(() => {
+        const boot = setTimeout(() => { void checkForUpdate(false); }, 1200);
+        const daily = setInterval(() => { void checkForUpdate(false); }, UPDATE_INTERVAL_MS);
+        return () => {
+          clearTimeout(boot);
+          clearInterval(daily);
+        };
+      }, [checkForUpdate]);
+
+      React.useEffect(() => {
+        if (!updateOpen) return undefined;
+        const onKeyDown = (event) => {
+          if (event.key === 'Escape' && !updateApplying) setUpdateOpen(false);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+      }, [updateOpen, updateApplying]);
 
       React.useEffect(() => {
         cancelledRef.current = false;
@@ -666,6 +916,68 @@ window.__ModuleLoader__.load({
       const tokenworksNotReady = warnings.includes('tokenworks-not-ready');
 
       if (props.wide === false) return null;
+
+      function handleVersionClick() {
+        if (updateInfo && updateInfo.updateAvailable) {
+          setUpdateError('');
+          setUpdateResult('');
+          setUpdateOpen(true);
+          return;
+        }
+        void checkForUpdate(true);
+      }
+
+      async function copyUpdateSpec() {
+        if (!updateInfo || !updateInfo.spec) return;
+        try {
+          await navigator.clipboard.writeText(updateInfo.spec);
+          setUpdateResult(t('updateCopied'));
+        } catch {
+          setUpdateError(t('updateNoProvider'));
+        }
+      }
+
+      async function applyUpdate() {
+        if (!updateInfo || updateApplying) return;
+        const updater = resolveClientUpdater();
+        if (!updater.canApply) {
+          setUpdateError(t('updateNoProvider'));
+          return;
+        }
+        setUpdateApplying(true);
+        setUpdateError('');
+        setUpdateResult('');
+        try {
+          const result = await updater.apply(updateInfo.spec, { version: updateInfo.latestVersion });
+          if (result && result.changed === false) {
+            setUpdateApplying(false);
+            setUpdateResult(t('updateUpToDate'));
+            return;
+          }
+          if (result && (result.application === 'failed' || result.error)) {
+            setUpdateApplying(false);
+            setUpdateError(t('updateFailed'));
+            return;
+          }
+          setUpdateApplying(false);
+          if (result && result.application === 'restart-required') {
+            setUpdateResult(t('updateRestart'));
+            return;
+          }
+          setUpdateResult(t('updateApplied'));
+          setTimeout(() => {
+            try {
+              window.location.reload();
+            } catch {
+              // Reload blocked by the carrier.
+            }
+          }, 1200);
+        } catch (err) {
+          setUpdateApplying(false);
+          const detail = err && err.message ? `: ${err.message}` : '';
+          setUpdateError(`${t('updateFailed')}${detail}`);
+        }
+      }
 
       function errorText(code, detail) {
         if (code === 'tokenworks-error' && typeof detail === 'string' && detail.trim() !== '') {
@@ -843,8 +1155,27 @@ window.__ModuleLoader__.load({
       }
 
       const failed = keys.filter((key) => key.ok === false);
+      const versionTitle = updateInfo && updateInfo.updateAvailable
+        ? `${t('updateAvailable')} v${updateInfo.latestVersion}`
+        : updateChecking
+          ? t('updateChecking')
+          : t('versionCheck');
       const header = h('div', { style: STYLE.header },
         h('span', { style: STYLE.title }, t('title')),
+        h('button', {
+          type: 'button',
+          style: { ...STYLE.versionButton, opacity: updateChecking ? 0.6 : 1 },
+          title: versionTitle,
+          'aria-label': `${t('updateTitle')}: ${versionTitle}`,
+          disabled: updateChecking,
+          onClick: handleVersionClick,
+        },
+        `v${CLIENT_VERSION}`,
+        updateInfo && updateInfo.updateAvailable
+          ? h('span', { style: STYLE.versionDot, 'aria-hidden': true })
+          : null,
+        updateNotice ? h('span', { style: STYLE.versionNote }, updateNotice) : null
+        ),
         warnings.length > 0
           ? h('span', { style: STYLE.warn, title: warnings.join('\n'), 'aria-label': t('warnings') }, '!')
           : null,
@@ -894,6 +1225,70 @@ window.__ModuleLoader__.load({
         );
       }
 
+      const updateModal = updateOpen && updateInfo
+        ? h('div', {
+          style: STYLE.modalOverlay,
+          onMouseDown: (event) => {
+            if (event.target === event.currentTarget && !updateApplying) setUpdateOpen(false);
+          },
+        },
+        h('div', {
+          style: STYLE.modal,
+          role: 'dialog',
+          'aria-modal': 'true',
+          'aria-label': t('updateTitle'),
+          onMouseDown: (event) => event.stopPropagation(),
+        },
+        h('div', { style: STYLE.modalTitle }, t('updateTitle')),
+        h('div', { style: STYLE.modalVersion },
+          `${t('updateCurrent')} v${CLIENT_VERSION}  →  ${t('updateLatest')} v${updateInfo.latestVersion}`
+        ),
+        updateInfo.releaseNotes
+          ? h('div', { style: STYLE.modalNotes }, updateInfo.releaseNotes)
+          : null,
+        updateInfo.releaseUrl
+          ? h('a', {
+            href: updateInfo.releaseUrl,
+            target: '_blank',
+            rel: 'noreferrer',
+            style: { fontSize: 9, color: 'var(--dsw-alias-brand-primary)', textDecoration: 'none' },
+          }, t('updateReleaseLink'))
+          : null,
+        h('div', { style: STYLE.modalHint },
+          updateProviderText(t, updateInfo.provider && updateInfo.provider.id)
+        ),
+        !updateInfo.canApply && updateInfo.spec
+          ? h('div', { style: STYLE.specText }, updateInfo.spec)
+          : null,
+        updateError ? h('div', { style: STYLE.modalError }, updateError) : null,
+        updateResult ? h('div', { style: STYLE.modalHint }, updateResult) : null,
+        h('div', { style: STYLE.modalActions },
+          h('button', {
+            type: 'button',
+            style: STYLE.secondaryButton,
+            disabled: updateApplying,
+            onClick: () => setUpdateOpen(false),
+          }, t('updateCancel')),
+          !updateInfo.canApply && updateInfo.spec
+            ? h('button', {
+              type: 'button',
+              style: STYLE.secondaryButton,
+              disabled: updateApplying,
+              onClick: copyUpdateSpec,
+            }, t('updateCopy'))
+            : null,
+          updateInfo.canApply
+            ? h('button', {
+              type: 'button',
+              style: { ...STYLE.primaryButton, opacity: updateApplying ? 0.6 : 1 },
+              disabled: updateApplying,
+              onClick: applyUpdate,
+            }, updateApplying ? t('updateApplying') : t('updateNow'))
+            : null
+        )
+        ))
+        : null;
+
       return h('div', {
         style: STYLE.root,
         ref: rootRef,
@@ -902,7 +1297,8 @@ window.__ModuleLoader__.load({
         'data-ustc-quota-root': '',
       },
       header,
-      body
+      body,
+      updateModal
       );
     }
 
@@ -923,6 +1319,84 @@ window.__ModuleLoader__.load({
         if (a !== b) return a > b;
       }
       return false;
+    }
+
+    function normalizeUpdateInfo(value) {
+      if (!value || typeof value !== 'object' || typeof value.latestVersion !== 'string') return null;
+      const latest = value.latestVersion.trim().replace(/^v/i, '');
+      if (!latest) return null;
+      return {
+        ...value,
+        latestVersion: latest,
+        spec: typeof value.spec === 'string' && value.spec
+          ? value.spec
+          : `github:Awenforever/dsh-ustc-quota#v${latest}`,
+        releaseUrl: typeof value.releaseUrl === 'string' && value.releaseUrl
+          ? value.releaseUrl
+          : `https://github.com/Awenforever/dsh-ustc-quota/releases/tag/v${latest}`,
+        releaseNotes: typeof value.releaseNotes === 'string' ? value.releaseNotes : '',
+      };
+    }
+
+    // Reserved adapter for the upcoming official DSH plugin-update preview.
+    // Current fallback is the official pluginManager Remote; if neither exists,
+    // the modal shows the exact spec for the plugin page.
+    function resolveClientUpdater() {
+      const remote = clientCtx && clientCtx.remote;
+      const official = remote && (remote.pluginUpdates || remote.pluginUpdater);
+      if (official) {
+        const apply = typeof official.applyUpdate === 'function'
+          ? official.applyUpdate.bind(official)
+          : typeof official.update === 'function'
+            ? official.update.bind(official)
+            : null;
+        if (apply) {
+          return {
+            id: 'official-plugin-updates',
+            canApply: true,
+            apply: (spec, meta) => apply({ id: 'dsh-ustc-quota', spec, version: meta && meta.version }),
+          };
+        }
+      }
+      const manager = remote && remote.pluginManager;
+      if (manager && typeof manager.installBundle === 'function') {
+        return {
+          id: 'dsh-plugin-manager',
+          canApply: true,
+          apply: (spec) => manager.installBundle(spec, { saveExact: true }),
+        };
+      }
+      return { id: 'manual', canApply: false, apply: null };
+    }
+
+    async function inspectUpdateFallback() {
+      const updater = resolveClientUpdater();
+      const remote = clientCtx && clientCtx.remote;
+      const manager = remote && remote.pluginManager;
+      if (!manager || typeof manager.inspect !== 'function') return null;
+      const result = await manager.inspect('github:Awenforever/dsh-ustc-quota');
+      if (!result || result.status !== 'accepted' || typeof result.version !== 'string') return null;
+      const latest = result.version.trim().replace(/^v/i, '');
+      if (!latest) return null;
+      return {
+        ok: true,
+        currentVersion: CLIENT_VERSION,
+        latestVersion: latest,
+        updateAvailable: isNewerVersion(latest, CLIENT_VERSION),
+        spec: 'github:Awenforever/dsh-ustc-quota',
+        releaseUrl: `https://github.com/Awenforever/dsh-ustc-quota/releases/tag/v${latest}`,
+        releaseName: `v${latest}`,
+        releaseNotes: '',
+        provider: { id: updater.id, canApply: updater.canApply },
+        canApply: updater.canApply,
+        source: 'pluginManager.inspect',
+      };
+    }
+
+    function updateProviderText(t, id) {
+      if (id === 'official-plugin-updates') return t('updateProviderOfficial');
+      if (id === 'dsh-plugin-manager') return t('updateProviderManager');
+      return t('updateProviderManual');
     }
 
     // TokenWorks applies a new Host bundle live but does not necessarily make
@@ -977,7 +1451,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale'],
+      inject: ['slots', 'locale', 'remote'],
       apply(ctx) {
         clientCtx = ctx;
         reloadOnceAfterClientUpdate();

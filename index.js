@@ -14,9 +14,11 @@ import {
   mergeQuota,
   normalizeConfig,
 } from './quota.js';
+import { UpdateService } from './update.js';
 
 const ROUTE_PATH = '/plugins/dsh-ustc-quota/snapshot';
-const PLUGIN_VERSION = '1.0.9';
+const UPDATE_PATH = '/plugins/dsh-ustc-quota/update';
+const PLUGIN_VERSION = '1.1.0';
 const KEY_INFO_PATH = 'key/info';
 const USER_INFO_PATH = 'user/info';
 const DISCOVERY_TTL_MS = 30000;
@@ -31,12 +33,19 @@ export const inject = ['webServer'];
 export function apply(ctx, config) {
   const settings = normalizeConfig(config);
   const reader = createReader(ctx, settings);
+  const updates = new UpdateService(ctx, { currentVersion: PLUGIN_VERSION });
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: ROUTE_PATH,
     handler: (request, response) => handleSnapshot(ctx, reader, request, response),
   }), 'dsh-ustc-quota: snapshot route');
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: UPDATE_PATH,
+    handler: (request, response) => handleUpdateCheck(ctx, updates, request, response),
+  }), 'dsh-ustc-quota: update check route');
 }
 
 function createReader(ctx, settings) {
@@ -414,6 +423,51 @@ async function handleSnapshot(ctx, reader, request, response) {
       return;
     }
     writeJson(response, 500, { error: 'snapshot-unavailable' });
+  }
+}
+
+async function handleUpdateCheck(ctx, updates, request, response) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    writeJson(response, 405, { error: 'method-not-allowed' }, { allow: 'GET, HEAD' });
+    return;
+  }
+
+  // Read-only update lookup. Desktop fetches do not carry the browser session
+  // the HTTP fence checks, so mirror the snapshot route and skip it there.
+  const connection = ctx.get('connection');
+  if (!isDesktopHost(ctx) && connection && typeof connection.requestRejection === 'function') {
+    let rejection;
+    try {
+      rejection = connection.requestRejection(request);
+    } catch {
+      rejection = 403;
+    }
+    if (rejection !== undefined && rejection !== null) {
+      writeJson(response, rejection, { error: 'unauthorized' });
+      return;
+    }
+  }
+
+  try {
+    const result = await updates.check(readForce(request));
+    if (request.method === 'HEAD') {
+      response.writeHead(200, JSON_HEADERS);
+      response.end();
+      return;
+    }
+    writeJson(response, 200, { ...result, pluginVersion: PLUGIN_VERSION });
+  } catch {
+    if (request.method === 'HEAD') {
+      response.writeHead(200, JSON_HEADERS);
+      response.end();
+      return;
+    }
+    writeJson(response, 200, {
+      ok: false,
+      currentVersion: PLUGIN_VERSION,
+      pluginVersion: PLUGIN_VERSION,
+      error: 'update-check-failed',
+    });
   }
 }
 
