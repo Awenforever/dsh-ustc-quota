@@ -166,7 +166,7 @@ tokenworksUsage.snapshot({language})
 - Key 只在 Host 内使用：DSH 通过 `credentials` 解析，TokenWorks 通过官方 `tokenworksUsage` 读取，二者都不会把 Key 发到浏览器；
 - 快照只包含 provider id、显示名、额度数值、重置时间、安全错误码；
 - 不转发 `key`、`key_alias`、`user_email`、`user_alias`、`platform_user_id`、`keys`、`teams`；
-- Web host 上路由先过 `ctx.connection.requestRejection`；官方 Desktop / TokenWorks 窗口从 `dsh-app://` 加载，fetch 不一定携带浏览器 session，因此和 dsh-market 一样在 Desktop host 上跳过这道 fence（只读、无 Key 数据，路由仍只绑定本机 Web server）。
+- Web host 上路由先过 `ctx.connection.requestRejection`；官方 Desktop / TokenWorks 窗口从 `dsh-app://` 加载，fetch 不一定携带浏览器 session，因此和 dsh-market 一样在 Desktop host 上跳过这道 fence（只读、无 Key 数据，路由仍只绑定 `127.0.0.1` Web server）。
 
 ## 已知边界
 
