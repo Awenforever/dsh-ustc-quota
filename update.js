@@ -11,7 +11,8 @@
 
 export const PLUGIN_ID = 'dsh-ustc-quota';
 export const REPOSITORY = 'Awenforever/dsh-ustc-quota';
-export const UPDATE_SPEC_PREFIX = `github:${REPOSITORY}#v`;
+export const UPDATE_ARCHIVE_BASE = `https://github.com/${REPOSITORY}/archive/refs/tags`;
+export const UPDATE_MAIN_SPEC = `https://github.com/${REPOSITORY}/archive/refs/heads/main.tar.gz`;
 export const DEFAULT_UPDATE_TTL_MS = 6 * 60 * 60 * 1000;
 export const DEFAULT_UPDATE_TIMEOUT_MS = 10000;
 
@@ -54,7 +55,7 @@ export function isUpdateAvailable(currentVersion, latestVersion) {
 }
 
 export function specForVersion(version) {
-  return `${UPDATE_SPEC_PREFIX}${normalizeVersion(version)}`;
+  return `${UPDATE_ARCHIVE_BASE}/v${normalizeVersion(version)}.tar.gz`;
 }
 
 export function releaseUrlForVersion(version) {

@@ -18,7 +18,7 @@ import { UpdateService } from './update.js';
 
 const ROUTE_PATH = '/plugins/dsh-ustc-quota/snapshot';
 const UPDATE_PATH = '/plugins/dsh-ustc-quota/update';
-const PLUGIN_VERSION = '1.1.0';
+const PLUGIN_VERSION = '1.1.1';
 const KEY_INFO_PATH = 'key/info';
 const USER_INFO_PATH = 'user/info';
 const DISCOVERY_TTL_MS = 30000;

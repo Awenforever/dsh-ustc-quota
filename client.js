@@ -10,7 +10,7 @@ window.__ModuleLoader__.load({
     const ENDPOINT = 'plugins/dsh-ustc-quota/snapshot';
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.0';
+    const CLIENT_VERSION = '1.1.1';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1383,7 +1383,7 @@ window.__ModuleLoader__.load({
         currentVersion: CLIENT_VERSION,
         latestVersion: latest,
         updateAvailable: isNewerVersion(latest, CLIENT_VERSION),
-        spec: 'github:Awenforever/dsh-ustc-quota',
+        spec: 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/heads/main.tar.gz',
         releaseUrl: `https://github.com/Awenforever/dsh-ustc-quota/releases/tag/v${latest}`,
         releaseName: `v${latest}`,
         releaseNotes: '',

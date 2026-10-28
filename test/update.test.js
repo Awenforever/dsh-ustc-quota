@@ -42,7 +42,7 @@ test('version normalization and comparison handle the release tags we use', () =
   assert.equal(compareVersions('1.1.1', '1.1.0'), 1);
   assert.equal(compareVersions('1.1.0', '1.1.0'), 0);
   assert.equal(compareVersions('1.0.9', '1.1.0'), -1);
-  assert.equal(specForVersion('v1.1.1'), 'github:Awenforever/dsh-ustc-quota#v1.1.1');
+  assert.equal(specForVersion('v1.1.1'), 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v1.1.1.tar.gz');
 });
 
 test('parseGitHubRelease keeps stable release metadata and rejects malformed payloads', () => {
@@ -107,7 +107,7 @@ test('UpdateService reports a newer release and caches the check', async () => {
   const second = await service.check(false);
   assert.equal(first.updateAvailable, true);
   assert.equal(first.latestVersion, '1.1.1');
-  assert.equal(first.spec, 'github:Awenforever/dsh-ustc-quota#v1.1.1');
+  assert.equal(first.spec, 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v1.1.1.tar.gz');
   assert.equal(first.provider.id, 'dsh-plugin-manager');
   assert.equal(first.canApply, true);
   assert.equal(second.updateAvailable, true);
