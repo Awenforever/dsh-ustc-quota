@@ -53,7 +53,7 @@ clear “no USTC provider” state, never to invented numbers.
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
 | D7 | Confirmation modal | Clicking the version shows current → latest, notes, release link, provider, cancel, and update action | PASS |
 | D8 | Direct update | The update action installs the release tarball through the host route | PASS |
-| D9 | Restart prompt | The modal explicitly requires a full DSH quit/reopen; it does not auto-reload. If the carrier reloads the page after install, the new client shows a persistent restart banner based on the previous version marker | PASS |
+| D9 | Restart prompt | The modal explicitly requires a full DSH quit/reopen; it does not auto-reload. If the carrier reloads the page after install, the new client shows a persistent restart banner based on the previous version marker | PASS (1.1.6, verified) |
 | D10 | No provider data | A credential-free profile shows the “no USTC provider” guidance | PASS |
 
 For D6/D8 the test profile alone was changed to report `1.1.5`; the repository
@@ -66,11 +66,15 @@ on the previous client-version marker until DSH is fully quit and reopened.
 | ID | Check | Pass condition | Result |
 |---|---|---|---|
 | T1 | Portable launch | 词元工坊 starts from the test copy; no user data directory is imported | PASS |
-| T2 | Card load | `USTC 词元额度` and `v1.1.6` appear in the TokenWorks sidebar | PASS |
-| T3 | Newer version | Red dot appears with a test-only `1.1.5` copy | PASS |
-| T4 | Confirmation modal | Current → latest, notes, provider, cancel, update action | PASS |
-| T5 | Direct update | Update installs `1.1.6` through TokenWorks's host route | PASS |
-| T6 | Restart prompt | Modal and/or card banner requires a full TokenWorks quit/reopen; card shows `v1.1.6` after restart | PASS |
+| T2 | Card load | `USTC 词元额度` and the current version appear in the TokenWorks sidebar | PASS on 1.1.4 baseline; 1.1.6 pending |
+| T3 | Newer version | Red dot appears with a test-only older copy | PASS on 1.1.4 (R6); 1.1.6 pending |
+| T4 | Confirmation modal | Current → latest, notes, provider, cancel, update action | PASS on 1.1.4 (R6); 1.1.6 pending |
+| T5 | Direct update | Update installs through TokenWorks's host route | PASS on 1.1.4 (R6); 1.1.6 pending |
+| T6 | Restart prompt | Modal and/or card banner requires a full TokenWorks quit/reopen | 1.1.6 pending |
+
+TokenWorks 1.1.6 was not accepted in the test VM: its host update path stalled
+without installing the release, so this document does not claim a TokenWorks
+1.1.6 pass. The 1.1.4 R6 evidence and the 1.1.6 DSH evidence stand separately.
 
 ### 4.3 Security and regression
 
