@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.5';
+    const CLIENT_VERSION = '1.1.6';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -20,6 +20,7 @@ window.__ModuleLoader__.load({
     let clientCtx = null;
     let activeSessionId = null;
     let holdHostReload = false;
+    let previousClientVersion = null;
     const activeSessionListeners = new Set();
 
     function setActiveSession(id) {
@@ -73,6 +74,8 @@ window.__ModuleLoader__.load({
       updateRestart: '已安装，需要完全退出并重新打开 DSH 才能生效',
       updateRestartPrompt: '更新已安装。请完全退出 DSH 并重新打开；仅刷新页面或等待自动刷新不会清空 DSH 的 client-module 启动缓存。',
       updateClose: '关闭',
+      restartAfterUpdate: '插件已更新，请完全退出并重开 DSH',
+      restartAfterUpdateHint: '更新已安装。仅刷新页面不会清空 DSH 的 client-module 启动缓存；请完全退出 DSH 后重新打开。',
       updateProviderOfficial: '通过 DSH 官方插件更新接口（预览）',
       updateProviderManager: '通过 DSH 插件管理器（预览接口）',
       updateProviderManual: '当前载体没有可用的直接更新接口，请在插件页填入下面的 spec',
@@ -139,6 +142,8 @@ window.__ModuleLoader__.load({
       updateRestart: 'Installed; fully quit and reopen DSH to apply it',
       updateRestartPrompt: "Update installed. Fully quit and reopen DSH; a page refresh or automatic reload will not clear DSH's client-module boot cache.",
       updateClose: 'Close',
+      restartAfterUpdate: 'Plugin updated — fully quit and reopen DSH',
+      restartAfterUpdateHint: 'The update is installed. A page refresh will not clear DSH client-module boot cache; fully quit and reopen DSH.',
       updateProviderOfficial: 'Via the DSH official plugin update API (preview)',
       updateProviderManager: 'Via the DSH plugin manager (preview API)',
       updateProviderManual: 'This carrier has no direct update API; paste the spec below into the plugin page',
@@ -458,6 +463,18 @@ window.__ModuleLoader__.load({
         borderRadius: 6,
         padding: '8px 9px',
       },
+      restartBanner: {
+        display: 'block',
+        marginTop: 1,
+        padding: '5px 7px',
+        borderRadius: 6,
+        background: 'rgba(217, 119, 6, 0.12)',
+        borderLeft: '3px solid #d97706',
+        color: 'var(--dsw-alias-label-primary)',
+        fontSize: 9,
+        lineHeight: 1.4,
+        fontWeight: 600,
+      },
       modalError: {
         fontSize: 9,
         lineHeight: 1.4,
@@ -755,6 +772,9 @@ window.__ModuleLoader__.load({
       const [updateChecking, setUpdateChecking] = React.useState(false);
       const [updateApplying, setUpdateApplying] = React.useState(false);
       const [updateRestartPending, setUpdateRestartPending] = React.useState(false);
+      const [restartNotice, setRestartNotice] = React.useState(
+        () => previousClientVersion !== null && previousClientVersion !== CLIENT_VERSION,
+      );
       const [updateNotice, setUpdateNotice] = React.useState('');
       const [updateError, setUpdateError] = React.useState('');
       const [updateResult, setUpdateResult] = React.useState('');
@@ -1214,6 +1234,11 @@ window.__ModuleLoader__.load({
         }, '↻')
       );
 
+      const restartBanner = restartNotice
+        ? h('div', { style: STYLE.restartBanner, title: t('restartAfterUpdateHint') },
+          t('restartAfterUpdate'))
+        : null;
+
       let body;
       if (loading && !snapshot) {
         body = h('div', { style: STYLE.hint }, h('div', { style: STYLE.hintText }, t('loading')));
@@ -1330,6 +1355,7 @@ window.__ModuleLoader__.load({
         'data-ustc-quota-root': '',
       },
       header,
+      restartBanner,
       body,
       updateModal
       );
@@ -1410,6 +1436,8 @@ window.__ModuleLoader__.load({
     function reloadOnceAfterClientUpdate() {
       if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
       try {
+        const storedVersion = localStorage.getItem(CLIENT_VERSION_KEY);
+        if (storedVersion && storedVersion !== CLIENT_VERSION) previousClientVersion = storedVersion;
         if (localStorage.getItem(CLIENT_VERSION_KEY) === CLIENT_VERSION) return;
         localStorage.setItem(CLIENT_VERSION_KEY, CLIENT_VERSION);
         if (typeof performance !== 'undefined' && performance.now() < 10000) return;

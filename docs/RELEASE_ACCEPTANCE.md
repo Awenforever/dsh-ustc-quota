@@ -22,7 +22,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.5 | 2026-10-29 |
+| Plugin | `dsh-ustc-quota` 1.1.6 | 2026-10-29 |
 | DSH desktop | 0.2.1-rc.3, official signed installer | 2026-10-29 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 30 `node:test` cases | 2026-10-29 |
@@ -47,30 +47,30 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.5` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.6` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
 | D7 | Confirmation modal | Clicking the version shows current → latest, notes, release link, provider, cancel, and update action | PASS |
 | D8 | Direct update | The update action installs the release tarball through the host route | PASS |
-| D9 | Restart prompt | The modal explicitly requires a full DSH quit/reopen; it does not auto-reload the page | PASS |
+| D9 | Restart prompt | The modal explicitly requires a full DSH quit/reopen; it does not auto-reload. If the carrier reloads the page after install, the new client shows a persistent restart banner based on the previous version marker | PASS |
 | D10 | No provider data | A credential-free profile shows the “no USTC provider” guidance | PASS |
 
-For D6/D8 the test profile alone was changed to report `1.1.4`; the repository
-and published tag stayed at `1.1.5`. The update installed `1.1.5`; the modal
-then required a full DSH quit/reopen, and the card showed `v1.1.5` after that
-restart.
+For D6/D8 the test profile alone was changed to report `1.1.5`; the repository
+and published tag stayed at `1.1.6`. The update installed `1.1.6`; the carrier
+may reload the page, and the new client shows a persistent restart banner based
+on the previous client-version marker until DSH is fully quit and reopened.
 
 ### 4.2 TokenWorks / 词元工坊
 
 | ID | Check | Pass condition | Result |
 |---|---|---|---|
 | T1 | Portable launch | 词元工坊 starts from the test copy; no user data directory is imported | PASS |
-| T2 | Card load | `USTC 词元额度` and `v1.1.5` appear in the TokenWorks sidebar | PASS |
-| T3 | Newer version | Red dot appears with a test-only `1.1.4` copy | PASS |
+| T2 | Card load | `USTC 词元额度` and `v1.1.6` appear in the TokenWorks sidebar | PASS |
+| T3 | Newer version | Red dot appears with a test-only `1.1.5` copy | PASS |
 | T4 | Confirmation modal | Current → latest, notes, provider, cancel, update action | PASS |
-| T5 | Direct update | Update installs `1.1.5` through TokenWorks's host route | PASS |
-| T6 | Restart prompt | Modal requires a full TokenWorks quit/reopen; card shows `v1.1.5` after restart | PASS |
+| T5 | Direct update | Update installs `1.1.6` through TokenWorks's host route | PASS |
+| T6 | Restart prompt | Modal and/or card banner requires a full TokenWorks quit/reopen; card shows `v1.1.6` after restart | PASS |
 
 ### 4.3 Security and regression
 
