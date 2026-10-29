@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.4';
+    const CLIENT_VERSION = '1.1.5';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -19,6 +19,7 @@ window.__ModuleLoader__.load({
 
     let clientCtx = null;
     let activeSessionId = null;
+    let holdHostReload = false;
     const activeSessionListeners = new Set();
 
     function setActiveSession(id) {
@@ -65,11 +66,13 @@ window.__ModuleLoader__.load({
       updateLatest: '最新版本',
       updateNotes: '更新说明',
       updateReleaseLink: '查看发布说明',
-      updateNow: '更新并重载',
+      updateNow: '安装更新',
       updateCancel: '取消',
       updateApplying: '正在更新…',
-      updateApplied: '更新完成，正在刷新…',
-      updateRestart: '已安装，但需要刷新或重启 DSH 才能生效',
+      updateApplied: '更新已安装。',
+      updateRestart: '已安装，需要完全退出并重新打开 DSH 才能生效',
+      updateRestartPrompt: '更新已安装。请完全退出 DSH 并重新打开；仅刷新页面或等待自动刷新不会清空 DSH 的 client-module 启动缓存。',
+      updateClose: '关闭',
       updateProviderOfficial: '通过 DSH 官方插件更新接口（预览）',
       updateProviderManager: '通过 DSH 插件管理器（预览接口）',
       updateProviderManual: '当前载体没有可用的直接更新接口，请在插件页填入下面的 spec',
@@ -129,11 +132,13 @@ window.__ModuleLoader__.load({
       updateLatest: 'Latest',
       updateNotes: 'Release notes',
       updateReleaseLink: 'View release notes',
-      updateNow: 'Update and reload',
+      updateNow: 'Install update',
       updateCancel: 'Cancel',
       updateApplying: 'Updating…',
-      updateApplied: 'Updated, reloading…',
-      updateRestart: 'Installed, but DSH must be refreshed or restarted',
+      updateApplied: 'Update installed.',
+      updateRestart: 'Installed; fully quit and reopen DSH to apply it',
+      updateRestartPrompt: "Update installed. Fully quit and reopen DSH; a page refresh or automatic reload will not clear DSH's client-module boot cache.",
+      updateClose: 'Close',
       updateProviderOfficial: 'Via the DSH official plugin update API (preview)',
       updateProviderManager: 'Via the DSH plugin manager (preview API)',
       updateProviderManual: 'This carrier has no direct update API; paste the spec below into the plugin page',
@@ -442,6 +447,17 @@ window.__ModuleLoader__.load({
         lineHeight: 1.4,
         color: 'var(--dsw-alias-label-secondary)',
       },
+      modalRestart: {
+        fontSize: 10,
+        lineHeight: 1.5,
+        fontWeight: 600,
+        color: 'var(--dsw-alias-label-primary)',
+        background: 'rgba(217, 119, 6, 0.12)',
+        border: '1px solid rgba(217, 119, 6, 0.35)',
+        borderLeft: '3px solid #d97706',
+        borderRadius: 6,
+        padding: '8px 9px',
+      },
       modalError: {
         fontSize: 9,
         lineHeight: 1.4,
@@ -738,6 +754,7 @@ window.__ModuleLoader__.load({
       const [updateOpen, setUpdateOpen] = React.useState(false);
       const [updateChecking, setUpdateChecking] = React.useState(false);
       const [updateApplying, setUpdateApplying] = React.useState(false);
+      const [updateRestartPending, setUpdateRestartPending] = React.useState(false);
       const [updateNotice, setUpdateNotice] = React.useState('');
       const [updateError, setUpdateError] = React.useState('');
       const [updateResult, setUpdateResult] = React.useState('');
@@ -936,6 +953,7 @@ window.__ModuleLoader__.load({
           return;
         }
         setUpdateApplying(true);
+        setUpdateRestartPending(false);
         setUpdateError('');
         setUpdateResult('');
         try {
@@ -968,17 +986,14 @@ window.__ModuleLoader__.load({
           }
           setUpdateApplying(false);
           if (result && result.application === 'restart-required') {
-            setUpdateResult(t('updateRestart'));
+            holdHostReload = true;
+            setUpdateRestartPending(true);
+            setUpdateResult(t('updateRestartPrompt'));
             return;
           }
-          setUpdateResult(t('updateApplied'));
-          setTimeout(() => {
-            try {
-              window.location.reload();
-            } catch {
-              // Reload blocked by the carrier.
-            }
-          }, 1200);
+          holdHostReload = true;
+          setUpdateRestartPending(true);
+          setUpdateResult(t('updateRestartPrompt'));
         } catch (err) {
           setUpdateApplying(false);
           const detail = err && err.message ? `: ${err.message}` : '';
@@ -1269,30 +1284,40 @@ window.__ModuleLoader__.load({
           ? h('div', { style: STYLE.specText }, updateInfo.spec)
           : null,
         updateError ? h('div', { style: STYLE.modalError }, updateError) : null,
-        updateResult ? h('div', { style: STYLE.modalHint }, updateResult) : null,
+        updateResult
+          ? h('div', { style: updateRestartPending ? STYLE.modalRestart : STYLE.modalHint }, updateResult)
+          : null,
         h('div', { style: STYLE.modalActions },
-          h('button', {
-            type: 'button',
-            style: STYLE.secondaryButton,
-            disabled: updateApplying,
-            onClick: () => setUpdateOpen(false),
-          }, t('updateCancel')),
-          !updateInfo.canApply && updateInfo.spec
+          updateRestartPending
             ? h('button', {
               type: 'button',
-              style: STYLE.secondaryButton,
-              disabled: updateApplying,
-              onClick: copyUpdateSpec,
-            }, t('updateCopy'))
-            : null,
-          updateInfo.canApply
-            ? h('button', {
-              type: 'button',
-              style: { ...STYLE.primaryButton, opacity: updateApplying ? 0.6 : 1 },
-              disabled: updateApplying,
-              onClick: applyUpdate,
-            }, updateApplying ? t('updateApplying') : t('updateNow'))
-            : null
+              style: STYLE.primaryButton,
+              onClick: () => setUpdateOpen(false),
+            }, t('updateClose'))
+            : h(React.Fragment, null,
+              h('button', {
+                type: 'button',
+                style: STYLE.secondaryButton,
+                disabled: updateApplying,
+                onClick: () => setUpdateOpen(false),
+              }, t('updateCancel')),
+              !updateInfo.canApply && updateInfo.spec
+                ? h('button', {
+                  type: 'button',
+                  style: STYLE.secondaryButton,
+                  disabled: updateApplying,
+                  onClick: copyUpdateSpec,
+                }, t('updateCopy'))
+                : null,
+              updateInfo.canApply
+                ? h('button', {
+                  type: 'button',
+                  style: { ...STYLE.primaryButton, opacity: updateApplying ? 0.6 : 1 },
+                  disabled: updateApplying,
+                  onClick: applyUpdate,
+                }, updateApplying ? t('updateApplying') : t('updateNow'))
+                : null
+            )
         )
         ))
         : null;
@@ -1358,6 +1383,7 @@ window.__ModuleLoader__.load({
     // once when it sees a newer Host version. If the carrier caches the module
     // even across a page reload, only a full app restart can replace it.
     function reloadForHostVersion(hostVersion) {
+      if (holdHostReload) return;
       if (typeof window === 'undefined' || typeof hostVersion !== 'string') return;
       if (!isNewerVersion(hostVersion, CLIENT_VERSION)) return;
       if (typeof sessionStorage !== 'undefined') {
