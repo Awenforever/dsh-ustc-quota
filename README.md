@@ -42,7 +42,7 @@ plugin_manager install_bundle
 target = github:Awenforever/dsh-ustc-quota
 ```
 
-安装完成后 Host、插件清单和 Client slot 会即时生效。DSH 的 client-hmr 会把新 client 加载进旧页面，插件会**自行刷新一次页面**（每个版本一次）。TokenWorks 的插件页「更新」只应用 Host bundle，已打开的页面不一定会换 client；v1.1.4 起 Host snapshot 带 `pluginVersion`，旧 client 检测到新 Host 版本会自行 `location.reload()` 一次。首次装 v1.1.4 仍需一次页面重载或应用重启来装入这个 watchdog；之后更新不再需要重启。如果载体的页面重载仍然缓存 client module，就只能重启，这是载体限制，不是 quota 数据的问题。
+安装完成后 Host、插件清单和 Client slot 会即时生效。插件能自动做的是**页面 reload**；**完全退出并重新打开 DSH 不是自动的**。首次安装发生在插件代码加载之前，插件无法替用户重启应用。v1.1.4 的 watchdog 只能保证之后 Host/client 版本变化时自动刷新页面一次；如果 DSH 0.2.1-rc.3 的 client-module 缓存让页面刷新后仍出现插件加载或启动错误，必须手动完全退出并重开 DSH。详见 [docs/RELEASE_ACCEPTANCE.md](docs/RELEASE_ACCEPTANCE.md) 的 carrier 限制。
 
 ### TokenWorks（词元工坊）
 
@@ -50,12 +50,12 @@ TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deep
 
 1. 在左侧栏打开 **插件** → 点右上角 **+ 添加插件**；
 2. 填入 `github:Awenforever/dsh-ustc-quota#v1.1.4`；
-3. 安装/更新后插件会在旧页面**自行刷新一次**（每个版本一次）；v1.1.4 首次安装可能需要一次页面重载或应用重启来装入 watchdog，之后 Host 版本变化会自动 reload；若插件页提示刷新，也可以直接刷新；
+3. 安装/更新后插件会在旧页面**自动刷新一次**；这不等于自动重启 DSH。TokenWorks 的插件页「更新」只应用 Host bundle，已打开的页面不一定会换 client；若页面刷新后插件仍未恢复，请完全退出并重开词元工坊。首次装 v1.1.4 也可能需要一次完全重开才能装入 watchdog；watchdog 只能自动刷新页面，不能清空 DSH client-module 缓存。若插件页提示刷新，可以刷新；若刷新后仍异常，按完全重开处理；
 4. 用学校统一身份登录后，卡片会自动出现。
 
 > 词元工坊插件页的「官方」只列出发行版自带的插件；第三方插件（包括本插件）不会出现在「官方」里，安装后会出现在「已安装」区域。这是正常的，不是没有装上。
 
-> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.4；v1.1.4 已修复旧包 `package.json` 的 BOM 问题。不需要重启词元工坊。
+> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.4；v1.1.4 已修复旧包 `package.json` 的 BOM 问题。安装/刷新后若仍未恢复，请完全退出并重开词元工坊，不要只凭一次页面刷新判断安装失败。
 
 TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
