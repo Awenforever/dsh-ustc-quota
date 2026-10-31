@@ -155,3 +155,26 @@ documented as “no restart ever needed”.
   provide restart guidance but cannot rewrite a failed boot.
 - The official `pluginUpdates` preview adapter is reserved; the current host
   route uses the stable `pluginManager` path.
+
+## 9. Post-release compatibility smoke: DSH 0.2.1-rc.5
+
+On 2026-10-31 the official nightly feed moved from `0.2.1-rc.3` to
+`0.2.1-rc.5` (`releaseDate` 2026-10-29T14:04:01Z). The `rc.yml`, `beta.yml`,
+and `latest.yml` feeds were still 404. The signed installer size matched the
+feed (289408544 bytes), its SHA-512 matched, and Authenticode reported a valid
+DeepSeek signer.
+
+The installer was applied only to the isolated `win11-test` DSH test profile,
+never to the running user desktop. With plugin v1.1.6 on rc.5:
+
+- the sidebar card rendered `USTC 词元额度` and `v1.1.6`;
+- `snapshot` returned `pluginVersion: 1.1.6`, `keyCount: 0`, `warnings: []`;
+- `update?force=1` returned `currentVersion: 1.1.6`, `latestVersion: 1.1.6`,
+  `updateAvailable: false`, and the `dsh-plugin-manager` provider;
+- no `web boot`/import error was observed.
+
+The rc.5 and rc.4 notes only mention thinking-content display and an ACP stdout
+fix; no `sidebar.footer.action`, `conversation.composer.dock`, `pluginManager`,
+or update-route contract change was observed. This is a compatibility smoke,
+not a full repeat of D1–D10 on rc.5. **No plugin code change was required.**
+The running user desktop remains on rc.3 and was not upgraded or restarted.

@@ -17,6 +17,8 @@
 | DeepSeek Harness Web / Desktop | `0.2.0-rc.2` 及以上 | `llm-pi-ai` provider 配置 + `credentials` + `/key/info`、`/user/info` |
 | 中国科大词元工坊 TokenWorks | `0.2.x` | 内置 `tokenworksUsage` 服务（`@ustc/tokenworks-usage`） |
 
+2026-10-31 在隔离的 `win11-test` 测试 profile 上用 **v1.1.6** 验证 DSH Desktop **0.2.1-rc.5**：卡片、`snapshot`、`update` 路由和 `dsh-plugin-manager` provider 均正常；本次无需改插件代码。
+
 插件没有运行时依赖，Host 使用 Node 24 自带的 `fetch`，Client 只用 React 和主题 token。
 
 ## 安装
@@ -97,7 +99,7 @@ key-c   8.7/30   29%       8.7/70   12%        11.1/100  11%
 - 标题「USTC 词元额度」右侧显示灰色小字版本号；点击版本号可手动检查更新；
 - 启动时检查一次，之后每 24 小时自动检查一次 GitHub 最新 release；
 - 有新版本时版本号旁出现小红点，点击弹出更新确认弹窗；
-- 当前 DSH 通过宿主的官方 `pluginManager` 更新路由直接安装最新 release 的 tarball；从 v1.1.6 起，安装成功后**不自动重载**，弹窗会明确要求完全退出并重新打开 DSH；如果载体仍自动刷新了页面，新 client 会在卡片上显示同样的重启提示，以避免 rc.3 的 client-module 启动缓存；
+- 当前 DSH 通过宿主的官方 `pluginManager` 更新路由直接安装最新 release 的 tarball；从 v1.1.6 起，安装成功后**不自动重载**，弹窗会明确要求完全退出并重新打开 DSH；如果载体仍自动刷新了页面，新 client 会在卡片上显示同样的重启提示，以避免 DSH carrier 的 client-module 启动缓存（rc.3/rc.5）；
 - 已预留 `pluginUpdates.applyUpdate({ id, spec, version })` 适配接口，供后续 DSH 官方插件更新预览版接入；接口不可用时回退到 `pluginManager`，再不可用则弹窗显示安装 spec；
 - TokenWorks / 旧 Host 如果暂时没有可用更新接口，弹窗会显示可复制的 spec，仍可走插件页手动安装。
 
