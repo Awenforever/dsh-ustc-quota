@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.8';
+    const CLIENT_VERSION = '1.1.9';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -63,6 +63,8 @@ window.__ModuleLoader__.load({
       updateFailed: '检查失败',
       updateAvailable: '发现新版本',
       updateTitle: '更新 USTC 词元额度',
+      preinstallWarningTitle: '安装前必读：安装后必须完全退出 DSH',
+      preinstallWarning: '安装/更新成功后，请完全退出并重新打开 DSH；仅刷新页面可能不够。若安装后启动崩溃，请使用 DSH 崩溃对话框中的“重启”或“退出”。',
       updateCurrent: '当前版本',
       updateLatest: '最新版本',
       updateNotes: '更新说明',
@@ -131,6 +133,8 @@ window.__ModuleLoader__.load({
       updateFailed: 'Update check failed',
       updateAvailable: 'Update available',
       updateTitle: 'Update USTC token quota',
+      preinstallWarningTitle: 'Before installing: fully quit DSH afterward',
+      preinstallWarning: 'After installing or updating, fully quit and reopen DSH; a page refresh may not be enough. If DSH crashes on startup, use Restart or Quit in the DSH crash dialog.',
       updateCurrent: 'Current',
       updateLatest: 'Latest',
       updateNotes: 'Release notes',
@@ -463,6 +467,41 @@ window.__ModuleLoader__.load({
         borderLeft: '3px solid #d97706',
         borderRadius: 6,
         padding: '8px 9px',
+      },
+      updateWarning: {
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 7,
+        padding: '9px 10px',
+        borderRadius: 6,
+        background: 'rgba(220, 38, 38, 0.12)',
+        border: '1px solid rgba(220, 38, 38, 0.55)',
+        borderLeft: '4px solid #dc2626',
+        color: 'var(--dsw-alias-label-primary)',
+      },
+      updateWarningIcon: {
+        flex: '0 0 auto',
+        color: 'var(--dsw-alias-state-error-primary)',
+        fontSize: 14,
+        fontWeight: 700,
+        lineHeight: 1.25,
+      },
+      updateWarningBody: {
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+      },
+      updateWarningTitle: {
+        color: 'var(--dsw-alias-state-error-primary)',
+        fontSize: 10.5,
+        fontWeight: 700,
+        lineHeight: 1.35,
+      },
+      updateWarningText: {
+        fontSize: 9.5,
+        fontWeight: 600,
+        lineHeight: 1.5,
       },
       restartBanner: {
         display: 'block',
@@ -1329,6 +1368,18 @@ window.__ModuleLoader__.load({
         h('div', { style: STYLE.modalVersion },
           `${t('updateCurrent')} v${CLIENT_VERSION}  →  ${t('updateLatest')} v${updateInfo.latestVersion}`
         ),
+        !updateRestartPending
+          ? h('div', {
+            style: STYLE.updateWarning,
+            role: 'alert',
+            'aria-live': 'assertive',
+          },
+          h('span', { style: STYLE.updateWarningIcon, 'aria-hidden': true }, '⚠'),
+          h('div', { style: STYLE.updateWarningBody },
+            h('div', { style: STYLE.updateWarningTitle }, t('preinstallWarningTitle')),
+            h('div', { style: STYLE.updateWarningText }, t('preinstallWarning'))
+          ))
+          : null,
         updateInfo.releaseNotes
           ? h('div', { style: STYLE.modalNotes }, updateInfo.releaseNotes)
           : null,

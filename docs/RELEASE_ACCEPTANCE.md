@@ -22,7 +22,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.8 | 2026-11-03 |
+| Plugin | `dsh-ustc-quota` 1.1.9 | 2026-11-03 |
 | DSH desktop | 0.2.1-rc.3, official signed installer | 2026-10-29 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 30 `node:test` cases | 2026-10-29 |
@@ -47,7 +47,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.8` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.9` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -206,3 +206,15 @@ This is a layout-only change; no request, route, quota calculation, or snapshot
 field changed. The 30 unit tests pass. The change was released without installing
 it into the running user desktop, per the explicit instruction not to install or
 enable it there.
+
+## 12. v1.1.9 pre-install restart warning
+
+v1.1.9 adds a prominent red warning inside the update confirmation modal,
+before the “Install update” action. It states that DSH must be fully quit and
+reopened after installing, and that if DSH crashes on startup the user should
+use Restart or Quit in the DSH crash dialog.
+
+This warning is deliberately shown **before** the package replacement, because
+the post-install client banner cannot render if the new client module itself
+fails to import during web boot. It is a text/UI-only change; the 30 unit tests
+pass and the release was not installed into the running user desktop.
