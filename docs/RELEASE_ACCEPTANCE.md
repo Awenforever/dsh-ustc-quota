@@ -22,7 +22,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.10 | 2026-11-03 |
+| Plugin | `dsh-ustc-quota` 1.1.11 | 2026-11-03 |
 | DSH desktop | 0.2.1-rc.3, official signed installer | 2026-10-29 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 30 `node:test` cases | 2026-10-29 |
@@ -47,7 +47,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.10` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.11` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -231,6 +231,18 @@ v1.1.10 narrows the pre-install warning to upgrades and states the cause:
 - A fresh install has no update confirmation modal and is not instructed to
   restart. The warning is rendered only when `updateInfo.updateAvailable` is
   true and the modal is an upgrade modal.
+
+This is a text/UI-only change; no request, route, quota calculation, or snapshot
+field changed. The 30 unit tests pass and the release was not installed into the
+running user desktop.
+
+## 14. v1.1.11 remove hardcoded future DSH versions
+
+v1.1.11 removes `rc.4` / `rc.5` from the upgrade warning. The warning now says
+the issue starts at DSH Desktop 0.2.1-rc.3 and is not confirmed fixed in the
+current DSH release. It is not necessary to edit this text for every DSH
+release; only when DSH actually provides a full-rescan/eviction path should a
+later plugin release remove or disable the warning.
 
 This is a text/UI-only change; no request, route, quota calculation, or snapshot
 field changed. The 30 unit tests pass and the release was not installed into the

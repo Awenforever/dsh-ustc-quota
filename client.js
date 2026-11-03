@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.10';
+    const CLIENT_VERSION = '1.1.11';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -63,8 +63,8 @@ window.__ModuleLoader__.load({
       updateFailed: '检查失败',
       updateAvailable: '发现新版本',
       updateTitle: '更新 USTC 词元额度',
-      preinstallWarningTitle: '升级前必读：DSH 0.2.1-rc.3 的缓存问题仍未修复',
-      preinstallWarning: 'DSH Desktop 0.2.1-rc.3 引入的 client-modules 增量扫描缓存问题在 rc.4/rc.5 仍未解决。升级本插件后必须完全退出并重新打开 DSH；仅刷新页面可能不够。若升级后启动崩溃，请使用 DSH 崩溃对话框中的“重启”或“退出”。全新安装不需要这一步。',
+      preinstallWarningTitle: '升级前必读：DSH client-module 缓存问题尚未修复',
+      preinstallWarning: 'DSH Desktop 0.2.1-rc.3 引入的 client-modules 增量扫描缓存问题，在当前 DSH 版本仍未确认修复。升级本插件后必须完全退出并重新打开 DSH；仅刷新页面可能不够。若升级后启动崩溃，请使用 DSH 崩溃对话框中的“重启”或“退出”。全新安装不需要这一步。',
       updateCurrent: '当前版本',
       updateLatest: '最新版本',
       updateNotes: '更新说明',
@@ -133,8 +133,8 @@ window.__ModuleLoader__.load({
       updateFailed: 'Update check failed',
       updateAvailable: 'Update available',
       updateTitle: 'Update USTC token quota',
-      preinstallWarningTitle: 'Upgrade warning: DSH 0.2.1-rc.3 client-module cache issue remains',
-      preinstallWarning: 'The client-modules incremental-scan cache issue introduced in DSH Desktop 0.2.1-rc.3 is still present in rc.4/rc.5. After upgrading this plugin, fully quit and reopen DSH; a page refresh may not be enough. If DSH crashes on startup, use Restart or Quit in the DSH crash dialog. A fresh install does not need this step.',
+      preinstallWarningTitle: 'Upgrade warning: the DSH client-module cache issue remains',
+      preinstallWarning: 'The client-modules incremental-scan cache issue introduced in DSH Desktop 0.2.1-rc.3 is not confirmed fixed in the current DSH release. After upgrading this plugin, fully quit and reopen DSH; a page refresh may not be enough. If DSH crashes on startup, use Restart or Quit in the DSH crash dialog. A fresh install does not need this step.',
       updateCurrent: 'Current',
       updateLatest: 'Latest',
       updateNotes: 'Release notes',
