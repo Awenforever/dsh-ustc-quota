@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.7';
+    const CLIENT_VERSION = '1.1.8';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -285,7 +285,7 @@ window.__ModuleLoader__.load({
       },
       legendRow: {
         display: 'grid',
-        gridTemplateColumns: '36px repeat(3, minmax(0, 1fr))',
+        gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr))',
         columnGap: 4,
         alignItems: 'center',
         minWidth: 0,
@@ -294,7 +294,7 @@ window.__ModuleLoader__.load({
       },
       keyRow: {
         display: 'grid',
-        gridTemplateColumns: '36px repeat(3, minmax(0, 1fr))',
+        gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr))',
         columnGap: 4,
         alignItems: 'center',
         minWidth: 0,
@@ -334,10 +334,11 @@ window.__ModuleLoader__.load({
       },
       keyLabel: {
         minWidth: 0,
+        flex: '0 1 auto',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
-        maxWidth: 30,
+        maxWidth: 'none',
       },
       star: {
         flex: '0 0 auto',
@@ -1033,6 +1034,41 @@ window.__ModuleLoader__.load({
         return fallback !== 'error.unknown' ? fallback : t('unavailable');
       }
 
+      function estimatedTextWidth(value) {
+        let width = 0;
+        for (const character of String(value || '')) {
+          width += /[\u3400-\u9fff]/.test(character) ? 10.5 : 6.3;
+        }
+        return width;
+      }
+
+      function keyColumnWidthFor(rows, currentProvider, fallbackProvider) {
+        let width = 36;
+        for (const key of Array.isArray(rows) ? rows : []) {
+          const windows = Array.isArray(key.windows) ? key.windows : [];
+          const limited = key.blocked === true || windows.some((window) =>
+            (window.state === 'active' || window.state === 'stale')
+            && typeof window.ratio === 'number'
+            && window.ratio >= 1);
+          const issue = key.ok === false || limited;
+          const label = typeof key.label === 'string' && key.label ? key.label : key.provider;
+          const displayLabel = key.provider === 'ustc-llm' && label === 'TokenWorks'
+            ? t('tokenworksRow')
+            : label;
+          const isCurrent = typeof currentProvider === 'string'
+            ? key.provider === currentProvider
+            : key.default || key.provider === fallbackProvider;
+          width = Math.max(
+            width,
+            estimatedTextWidth(displayLabel)
+              + (isCurrent ? 7 : 0)
+              + (issue ? 14 : 0)
+              + 8,
+          );
+        }
+        return Math.ceil(width);
+      }
+
       function sourceLabel(source) {
         if (source === 'user') return t('sourceUser');
         if (source === 'cache') return t('sourceCache');
@@ -1198,6 +1234,8 @@ window.__ModuleLoader__.load({
       }
 
       const failed = keys.filter((key) => key.ok === false);
+      const keyColumnWidth = keyColumnWidthFor(keys, activeProvider, defaultProvider);
+      const tableStyle = { ...STYLE.table, '--ustc-key-col': `${keyColumnWidth}px` };
       const versionTitle = updateInfo && updateInfo.updateAvailable
         ? `${t('updateAvailable')} v${updateInfo.latestVersion}`
         : updateChecking
@@ -1256,7 +1294,7 @@ window.__ModuleLoader__.load({
         );
       } else {
         body = h(React.Fragment, null,
-          h('div', { style: STYLE.table },
+          h('div', { style: tableStyle },
             h('div', { style: STYLE.legendRow },
               h('div', { key: 'corner' }),
               WINDOW_IDS.map((id) => h(React.Fragment, { key: id }, windowLegend(id)))

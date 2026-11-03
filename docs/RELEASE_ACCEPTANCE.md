@@ -22,7 +22,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.7 | 2026-11-03 |
+| Plugin | `dsh-ustc-quota` 1.1.8 | 2026-11-03 |
 | DSH desktop | 0.2.1-rc.3, official signed installer | 2026-10-29 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 30 `node:test` cases | 2026-10-29 |
@@ -47,7 +47,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.7` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.8` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -192,3 +192,17 @@ returned `/v1/models` 200 while `/key/info` and `/user/info` returned 403, so
 the old label was factually wrong. No request, route, quota calculation, or
 snapshot field changed; the 30 unit tests still pass. The D1–D10 matrix above
 was not re-run because this release changes only that label.
+
+## 11. v1.1.8 key-column auto-fit
+
+v1.1.8 fixes the sidebar layout when a key row shows an issue marker. The first
+grid column was fixed at 36px and the label was capped at 30px, so adding the
+red issue dot could truncate a label such as `wmw` to `W...`. The table now
+computes a shared key-column width from each visible label plus the current-key
+star and issue dot, and applies that width to both the header and every row via
+a CSS variable. The row data columns keep their equal-fraction sizing.
+
+This is a layout-only change; no request, route, quota calculation, or snapshot
+field changed. The 30 unit tests pass. The change was released without installing
+it into the running user desktop, per the explicit instruction not to install or
+enable it there.
