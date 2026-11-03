@@ -17,7 +17,7 @@
 | DeepSeek Harness Web / Desktop | `0.2.0-rc.2` 及以上 | `llm-pi-ai` provider 配置 + `credentials` + `/key/info`、`/user/info` |
 | 中国科大词元工坊 TokenWorks | `0.2.x` | 内置 `tokenworksUsage` 服务（`@ustc/tokenworks-usage`） |
 
-2026-10-31 在隔离的 `win11-test` 测试 profile 上用 **v1.1.6** 验证 DSH Desktop **0.2.1-rc.5**：卡片、`snapshot`、`update` 路由和 `dsh-plugin-manager` provider 均正常；本次无需改插件代码。
+2026-10-31 在隔离的 `win11-test` 测试 profile 上用 **v1.1.6** 验证 DSH Desktop **0.2.1-rc.5**：卡片、`snapshot`、`update` 路由和 `dsh-plugin-manager` provider 均正常；v1.1.7 只修正额度接口 401/403 的错误文案，不改变数据或请求逻辑。
 
 插件没有运行时依赖，Host 使用 Node 24 自带的 `fetch`，Client 只用 React 和主题 token。
 
@@ -34,7 +34,7 @@ github:Awenforever/dsh-ustc-quota
 固定版本（推荐，避免默认分支后续变动）：
 
 ```text
-github:Awenforever/dsh-ustc-quota#v1.1.6
+github:Awenforever/dsh-ustc-quota#v1.1.7
 ```
 
 或者用你已有的安装方式指定同一目录/仓库：
@@ -51,13 +51,13 @@ target = github:Awenforever/dsh-ustc-quota
 TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deepseek-ai/dsh-plugin-manager`：
 
 1. 在左侧栏打开 **插件** → 点右上角 **+ 添加插件**；
-2. 填入 `github:Awenforever/dsh-ustc-quota#v1.1.6`；
+2. 填入 `github:Awenforever/dsh-ustc-quota#v1.1.7`；
 3. 安装/更新后 Host 会应用新 bundle，但插件 client 的页面刷新不等于自动重启 DSH。从 v1.1.6 起，面板内安装成功后会停在弹窗，明确要求完全退出并重开 DSH；TokenWorks 的插件页「更新」也只应用 Host bundle。若页面刷新后插件仍未恢复，请完全退出并重开词元工坊，不要只凭一次刷新判断安装失败；
 4. 用学校统一身份登录后，卡片会自动出现。
 
 > 词元工坊插件页的「官方」只列出发行版自带的插件；第三方插件（包括本插件）不会出现在「官方」里，安装后会出现在「已安装」区域。这是正常的，不是没有装上。
 
-> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.6；v1.1.6 已修复旧包 `package.json` 的 BOM 问题。安装/刷新后若仍未恢复，请完全退出并重开词元工坊，不要只凭一次页面刷新判断安装失败。
+> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.7；v1.1.7 已包含旧包 `package.json` 的 BOM 修复和额度接口错误文案修正。安装/刷新后若仍未恢复，请完全退出并重开词元工坊，不要只凭一次页面刷新判断安装失败。
 
 TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
@@ -73,7 +73,7 @@ TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
 卡片独占侧边栏底部的一整行：TokenWorks 的「更新」按钮或 DSH 的 Cordis 按钮留在上一行，不会被并排挤压；卡片内部的三列也不会被截断。
 
-> v1.1.6 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.6，并刷新一次页面让新的 client bundle 生效。
+> v1.1.6 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.7，并刷新一次页面让新的 client bundle 生效。
 
 每把 Key（TokenWorks 下是当前账户）一行，三列：
 
@@ -173,6 +173,7 @@ tokenworksUsage.snapshot({language})
 ## 已知边界
 
 - `/key/info`、`/user/info` 是 USTC LiteLLM 的内部接口，不是公开稳定 API；字段变化时插件显示安全错误，不会崩溃。
+- **额度查询接口的 401/403 不等于模型 Key 无效或禁用。** 从 v1.1.7 起，卡片显示“额度查询被上游拒绝（401/403）”，不再声称 Key 无效；实测这些 Key 的 `/v1/models` 仍可返回 200，模型调用可正常，问题在额度/计费查询侧。上游拒绝可能来自该接口的限流或临时故障。
 - 24h 可能是用户级预算，同一用户多把 Key 会共享；24h 单元格会标注“密钥级 / 用户级 / 上次查询”。
 - 12:00 / 00:00 边界上平台可能短暂返回旧用量；插件把过期窗口标成“重置中”，8 秒后重查。
 - 额度数值是平台额度单位（当前 3h/12h/24h 为 30/70/100），不是 DSH token 数；插件不擅自换算。

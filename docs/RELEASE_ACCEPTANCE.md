@@ -22,7 +22,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.6 | 2026-10-29 |
+| Plugin | `dsh-ustc-quota` 1.1.7 | 2026-11-03 |
 | DSH desktop | 0.2.1-rc.3, official signed installer | 2026-10-29 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 30 `node:test` cases | 2026-10-29 |
@@ -47,7 +47,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.6` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.7` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -178,3 +178,17 @@ fix; no `sidebar.footer.action`, `conversation.composer.dock`, `pluginManager`,
 or update-route contract change was observed. This is a compatibility smoke,
 not a full repeat of D1–D10 on rc.5. **No plugin code change was required.**
 The running user desktop remains on rc.3 and was not upgraded or restarted.
+
+## 10. v1.1.7 error-label correction
+
+v1.1.7 is a text-only correction for the case where the upstream quota/billing
+endpoint rejects the key query. The plugin now shows:
+
+- Chinese: `额度查询被上游拒绝（401/403）`
+- English: `Quota query rejected by upstream (401/403)`
+
+It no longer says “key invalid or disabled”. On 2026-11-03 the same USTC keys
+returned `/v1/models` 200 while `/key/info` and `/user/info` returned 403, so
+the old label was factually wrong. No request, route, quota calculation, or
+snapshot field changed; the 30 unit tests still pass. The D1–D10 matrix above
+was not re-run because this release changes only that label.

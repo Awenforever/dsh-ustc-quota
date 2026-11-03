@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.6';
+    const CLIENT_VERSION = '1.1.7';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -100,7 +100,7 @@ window.__ModuleLoader__.load({
       sourceUser: '用户级',
       sourceCache: '上次查询',
       'error.no-key': '未配置密钥',
-      'error.unauthorized': '密钥无效或已禁用',
+      'error.unauthorized': '额度查询被上游拒绝（401/403）',
       'error.rate-limited': '请求过于频繁',
       'error.timeout': '查询超时',
       'error.network': '网络错误',
@@ -168,7 +168,7 @@ window.__ModuleLoader__.load({
       sourceUser: 'user-level',
       sourceCache: 'cached',
       'error.no-key': 'No API key configured',
-      'error.unauthorized': 'Key invalid or disabled',
+      'error.unauthorized': 'Quota query rejected by upstream (401/403)',
       'error.rate-limited': 'Rate limited',
       'error.timeout': 'Query timed out',
       'error.network': 'Network error',
