@@ -193,14 +193,30 @@ export class UpdateService {
       return { ok: false, error: 'provider-unavailable', spec: info.spec };
     }
     const result = await provider.apply(info.spec, { version: info.latestVersion });
-    if (!result || result.changed === false) {
-      return { ok: false, error: 'not-changed', spec: info.spec, result };
+    if (!result) {
+      return { ok: false, error: 'apply-failed', spec: info.spec };
     }
     if (result.application === 'failed' || result.error) {
       return { ok: false, error: 'apply-failed', spec: info.spec, result };
     }
+    if (result.changed === false) {
+      // The manager may already have the package installed (for example a
+      // previous attempt installed it but the response was lost), or it may
+      // legitimately have nothing to change. This is not a failed update and
+      // must stay retryable from the client.
+      return {
+        ok: true,
+        changed: false,
+        application: typeof result.application === 'string' ? result.application : 'noop',
+        spec: info.spec,
+        latestVersion: info.latestVersion,
+        provider: serializeProvider(provider),
+        result,
+      };
+    }
     return {
       ok: true,
+      changed: true,
       spec: info.spec,
       latestVersion: info.latestVersion,
       provider: serializeProvider(provider),

@@ -138,6 +138,24 @@ test('UpdateService applies the latest tarball through the plugin manager', asyn
   });
 });
 
+test('UpdateService treats a no-op manager result as a successful no-op', async () => {
+  const fetchImpl = fetchWith(release('1.1.2'));
+  const service = new UpdateService(ctxWith({
+    pluginManager: {
+      installBundle: async () => ({ changed: false, application: 'noop' }),
+    },
+  }), {
+    currentVersion: '1.1.1',
+    fetchImpl,
+    now: () => 2000,
+  });
+  const result = await service.apply();
+  assert.equal(result.ok, true);
+  assert.equal(result.changed, false);
+  assert.equal(result.error, undefined);
+  assert.equal(result.provider.id, 'dsh-plugin-manager');
+});
+
 test('UpdateService force bypasses the cache and handles an up-to-date release', async () => {
   const fetchImpl = fetchWith(release('1.1.0'));
   const service = new UpdateService(ctxWith(), {

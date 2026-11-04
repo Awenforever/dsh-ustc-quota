@@ -22,10 +22,10 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.12 | 2026-11-04 |
+| Plugin | `dsh-ustc-quota` 1.1.13 | 2026-11-05 |
 | DSH desktop | 0.2.1-rc.3, official signed installer | 2026-10-29 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
-| Unit tests | 30 `node:test` cases | 2026-10-29 |
+| Unit tests | 31 `node:test` cases | 2026-11-05 |
 | OS | Windows 11 10.0.26200 x64 | 2026-10-29 |
 
 ## 3. Preconditions
@@ -47,7 +47,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.12` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.13` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -82,7 +82,7 @@ without installing the release, so this document does not claim a TokenWorks
 |---|---|---|---|
 | S1 | Key isolation | No key or credential appears in client responses, logs, or screenshots | PASS (inspected) |
 | S2 | No invented quota | Credential-free card shows an error/empty-state, never numbers | PASS |
-| S3 | Unit tests | `node --test test/quota.test.js test/update.test.js` | PASS: 30 / 30 |
+| S3 | Unit tests | `node --test test/quota.test.js test/update.test.js` | PASS: 31 / 31 |
 | S4 | Syntax | `node --check index.js client.js update.js` | PASS |
 
 ## 5. Commands
@@ -96,7 +96,7 @@ node --check update.js
 node --test test/quota.test.js test/update.test.js
 ```
 
-Expected unit result: `pass 30`, `fail 0`.
+Expected unit result: `pass 31`, `fail 0`.
 
 The desktop UI checks are performed on a clean Windows 11 VM with DSH and
 TokenWorks installed into isolated test profiles. The version/red-dot/modal
@@ -136,7 +136,7 @@ documented as “no restart ever needed”.
 ## 7. Release Checklist
 
 - [ ] `node --check` passes for host and client sources.
-- [ ] 30 unit tests pass.
+- [ ] 31 unit tests pass.
 - [ ] Plugin version, `CLIENT_VERSION`, and `PLUGIN_VERSION` are consistent.
 - [ ] README and this acceptance document are updated.
 - [ ] Release tag is created from the tested commit.
@@ -266,4 +266,36 @@ A later plugin can still use its own `order`, `position`, portal, or
 carrier: a full-width footer panel slot or declarative layout group.
 
 The 30 unit tests pass. This release was not installed into the running user
+desktop.
+
+## 16. v1.1.13 update token and retry fix
+
+Reproduced on `win11-test` with the released v1.1.11 client: the token came
+from the startup update check, but the modal was opened more than five minutes
+later. The first apply returned `invalid-update-token`; the old client then
+refreshed the token, and the following apply surfaced `not-changed` because the
+plugin manager reported `changed: false` and the old code wrapped that as an
+error.
+
+v1.1.13 changes the update path:
+
+- update tokens live 30 minutes instead of 5;
+- an apply token is not deleted before the manager finishes;
+- concurrent or repeated apply with the same token share one in-flight promise
+  and one cached successful result, so a duplicate click cannot consume the
+  token and produce `invalid-update-token`;
+- the client automatically refreshes the token and retries once after a 403
+  `invalid-update-token`;
+- a manager `changed: false` is a successful no-op and shows the full-restart
+  prompt, not `not-changed`.
+
+Verification: a test-only copy of the v1.1.13 client/Host was labelled 1.1.11
+and given a 1-second token TTL. In the isolated `win11-test` profile the stale
+token was retried automatically, the manager installed v1.1.12, the card showed
+v1.1.12 and the restart banner, with no `invalid-update-token` or `not-changed`
+error. 31 unit tests pass.
+
+The first upgrade from v1.1.11/v1.1.12 to v1.1.13 still runs the old update
+code; if it fails, install v1.1.13 directly from the plugin page. Subsequent
+updates use the fixed path. The release was not installed into the running user
 desktop.

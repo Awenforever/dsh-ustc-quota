@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.12';
+    const CLIENT_VERSION = '1.1.13';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -905,7 +905,7 @@ window.__ModuleLoader__.load({
       }, []);
 
       const checkForUpdate = React.useCallback(async (manual) => {
-        if (updateCheckingRef.current) return;
+        if (updateCheckingRef.current) return null;
         updateCheckingRef.current = true;
         setUpdateChecking(true);
         if (manual) showUpdateNotice(t('updateChecking'));
@@ -927,17 +927,20 @@ window.__ModuleLoader__.load({
           }
           if (!info) {
             if (manual) showUpdateNotice(t('updateFailed'));
-            return;
+            return null;
           }
           const available = isNewerVersion(info.latestVersion, CLIENT_VERSION);
-          setUpdateInfo({
+          const next = {
             ...info,
             updateAvailable: available,
             canApply: available && info.canApply === true,
-          });
+          };
+          setUpdateInfo(next);
           if (manual) showUpdateNotice(available ? t('updateAvailable') : t('updateUpToDate'));
+          return next;
         } catch {
           if (manual) showUpdateNotice(t('updateFailed'));
+          return null;
         } finally {
           updateCheckingRef.current = false;
           setUpdateChecking(false);
@@ -1044,6 +1047,19 @@ window.__ModuleLoader__.load({
         }
       }
 
+      async function postUpdateApply(info) {
+        const response = await fetch(UPDATE_APPLY_ENDPOINT, {
+          method: 'POST',
+          cache: 'no-store',
+          headers: {
+            accept: 'application/json',
+            'x-dsh-update-token': info.applyToken,
+          },
+        });
+        const body = await response.json().catch(() => null);
+        return { response, body };
+      }
+
       async function applyUpdate() {
         if (!updateInfo || updateApplying) return;
         if (!updateInfo.applyToken) {
@@ -1055,15 +1071,17 @@ window.__ModuleLoader__.load({
         setUpdateError('');
         setUpdateResult('');
         try {
-          const response = await fetch(UPDATE_APPLY_ENDPOINT, {
-            method: 'POST',
-            cache: 'no-store',
-            headers: {
-              accept: 'application/json',
-              'x-dsh-update-token': updateInfo.applyToken,
-            },
-          });
-          const body = await response.json().catch(() => null);
+          let target = updateInfo;
+          let attempt = await postUpdateApply(target);
+          if (attempt.response.status === 403 && attempt.body && attempt.body.error === 'invalid-update-token') {
+            const fresh = await checkForUpdate(true);
+            if (fresh && fresh.updateAvailable && fresh.applyToken) {
+              target = fresh;
+              setUpdateInfo(fresh);
+              attempt = await postUpdateApply(fresh);
+            }
+          }
+          const { response, body } = attempt;
           if (!response.ok || !body || body.ok !== true) {
             setUpdateApplying(false);
             setUpdateError(`${t('updateFailed')}${body && body.error ? `: ${body.error}` : ''}`);
@@ -1073,7 +1091,12 @@ window.__ModuleLoader__.load({
           const result = body.result;
           if (result && result.changed === false) {
             setUpdateApplying(false);
-            setUpdateResult(t('updateUpToDate'));
+            // A no-op from the manager usually means the package is already on
+            // disk but the running Host is still the old version. Ask for the
+            // full restart instead of reporting a misleading "up to date".
+            holdHostReload = true;
+            setUpdateRestartPending(true);
+            setUpdateResult(t('updateRestartPrompt'));
             return;
           }
           if (result && (result.application === 'failed' || result.error)) {

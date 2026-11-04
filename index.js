@@ -21,8 +21,8 @@ import { UpdateService } from './update.js';
 const ROUTE_PATH = '/plugins/dsh-ustc-quota/snapshot';
 const UPDATE_PATH = '/plugins/dsh-ustc-quota/update';
 const UPDATE_APPLY_PATH = '/plugins/dsh-ustc-quota/update/apply';
-const UPDATE_TOKEN_TTL_MS = 5 * 60 * 1000;
-const PLUGIN_VERSION = '1.1.12';
+const UPDATE_TOKEN_TTL_MS = 30 * 60 * 1000;
+const PLUGIN_VERSION = '1.1.13';
 const KEY_INFO_PATH = 'key/info';
 const USER_INFO_PATH = 'user/info';
 const DISCOVERY_TTL_MS = 30000;
@@ -500,7 +500,11 @@ async function handleUpdateApply(ctx, updates, updateTokens, request, response) 
     writeJson(response, 403, { error: 'invalid-update-token' });
     return;
   }
-  updateTokens.delete(token);
+
+  if (record.result) {
+    writeJson(response, 200, { ...record.result, pluginVersion: PLUGIN_VERSION });
+    return;
+  }
 
   const connection = ctx.get('connection');
   if (!isDesktopHost(ctx) && connection && typeof connection.requestRejection === 'function') {
@@ -517,9 +521,17 @@ async function handleUpdateApply(ctx, updates, updateTokens, request, response) 
   }
 
   try {
-    const outcome = await updates.apply(record);
+    const inFlight = record.inFlight || (record.inFlight = updates.apply(record));
+    let outcome;
+    try {
+      outcome = await inFlight;
+    } finally {
+      record.inFlight = null;
+    }
+    if (outcome && outcome.ok) record.result = outcome;
     writeJson(response, 200, { ...outcome, pluginVersion: PLUGIN_VERSION });
   } catch {
+    record.inFlight = null;
     writeJson(response, 200, {
       ok: false,
       error: 'update-apply-failed',
