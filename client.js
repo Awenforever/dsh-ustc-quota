@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.11';
+    const CLIENT_VERSION = '1.1.12';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -685,9 +685,9 @@ window.__ModuleLoader__.load({
           else item.el.style.removeProperty(item.property);
         }
       };
+      let footer = null;
       try {
         const classOf = (el) => typeof el.className === 'string' ? el.className : '';
-        let footer = null;
         for (let node = root.parentElement; node && node !== document.body; node = node.parentElement) {
           if (classOf(node).includes('footerActions')) { footer = node; break; }
         }
@@ -698,7 +698,7 @@ window.__ModuleLoader__.load({
             if (hasOther && (style.display.includes('flex') || style.display.includes('grid'))) { footer = node; break; }
           }
         }
-        if (!footer) return restore;
+        if (!footer) return { restore, footer: null };
         const chain = [];
         for (let node = root.parentElement; node && node !== footer && node !== document.body && chain.length < 6; node = node.parentElement) {
           chain.push(node);
@@ -722,6 +722,11 @@ window.__ModuleLoader__.load({
         apply(footer, 'height', 'auto');
         apply(footer, 'max-height', 'none');
         apply(footer, 'overflow', 'visible');
+        // Keep this card after ordinary footer actions even when another
+        // plugin mounts after us. This is best-effort: the slot system has no
+        // shared layout-group contract, so a later plugin can still impose its
+        // own order/position.
+        apply(root, 'order', '2147483647');
         const footerStyle = getComputedStyle(footer);
         if (footerStyle.display.includes('grid')) apply(footer, 'grid-template-columns', '1fr');
         const parent = footer.parentElement;
@@ -733,7 +738,40 @@ window.__ModuleLoader__.load({
       } catch {
         // The card still renders; a carrier-specific footer simply stays as-is.
       }
-      return restore;
+      return { restore, footer };
+    }
+
+    // Other plugins may mount their footer actions after this card. Re-run the
+    // layout normalization when the footer's child list changes, but do not
+    // observe attributes: our own inline styles must not create a loop.
+    function installFooterLayout(root) {
+      let applied = { restore: () => {}, footer: null };
+      let observer = null;
+      let timer = null;
+      let pending = false;
+      const reapply = () => {
+        pending = false;
+        timer = null;
+        if (!root.isConnected) return;
+        applied.restore();
+        applied = applyFooterLayout(root);
+        if (observer) observer.disconnect();
+        if (!applied.footer || typeof MutationObserver === 'undefined') return;
+        if (!observer) {
+          observer = new MutationObserver(() => {
+            if (pending) return;
+            pending = true;
+            timer = setTimeout(reapply, 0);
+          });
+        }
+        observer.observe(applied.footer, { childList: true, subtree: true });
+      };
+      reapply();
+      return () => {
+        if (timer !== null) clearTimeout(timer);
+        if (observer) observer.disconnect();
+        applied.restore();
+      };
     }
 
     // The sidebar footer is global, while the key actually in use is chosen per
@@ -975,7 +1013,7 @@ window.__ModuleLoader__.load({
       React.useLayoutEffect(() => {
         const root = rootRef.current;
         if (!root) return;
-        return applyFooterLayout(root);
+        return installFooterLayout(root);
       }, [props.wide]);
 
       const keys = snapshot && Array.isArray(snapshot.keys) ? snapshot.keys : [];

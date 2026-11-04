@@ -32,12 +32,12 @@ github:Awenforever/dsh-ustc-quota
 ```
 
 > **升级前必读：DSH Desktop 0.2.1-rc.3 引入的 client-modules 增量扫描缓存问题，在当前 DSH 版本仍未确认修复。** 从旧版本升级本插件后，必须完全退出并重新打开 DSH；仅刷新页面可能不够。若升级后启动崩溃，请使用 DSH 崩溃对话框里的 **重启** 或 **退出**。  
-> **从零安装不受影响，不需要完全重启。** v1.1.11 的更新确认弹窗只会在“发现新版本”时对升级用户显示这条红色警告；全新安装没有这个弹窗。
+> **从零安装不受影响，不需要完全重启。** v1.1.12 的更新确认弹窗只会在“发现新版本”时对升级用户显示这条红色警告；全新安装没有这个弹窗。
 
 固定版本（推荐，避免默认分支后续变动）：
 
 ```text
-github:Awenforever/dsh-ustc-quota#v1.1.11
+github:Awenforever/dsh-ustc-quota#v1.1.12
 ```
 
 或者用你已有的安装方式指定同一目录/仓库：
@@ -47,20 +47,20 @@ plugin_manager install_bundle
 target = github:Awenforever/dsh-ustc-quota
 ```
 
-安装完成后 Host、插件清单和 Client slot 会即时生效。**全新安装**不需要完全重启 DSH；如果页面提示刷新，刷新一次即可。**从旧版本升级**则不同：DSH Desktop 0.2.1-rc.3 引入的 client-modules 增量扫描缓存问题在当前 DSH 版本仍未确认修复，升级后必须完全退出并重新打开 DSH；页面刷新不够。v1.1.11 会在升级确认弹窗中、点击“安装更新”之前显示红色警告；全新安装不会看到这个弹窗。若升级后启动崩溃，使用 DSH 崩溃对话框的“重启”或“退出”。详见 [docs/RELEASE_ACCEPTANCE.md](docs/RELEASE_ACCEPTANCE.md) 的 carrier 限制。
+安装完成后 Host、插件清单和 Client slot 会即时生效。**全新安装**不需要完全重启 DSH；如果页面提示刷新，刷新一次即可。**从旧版本升级**则不同：DSH Desktop 0.2.1-rc.3 引入的 client-modules 增量扫描缓存问题在当前 DSH 版本仍未确认修复，升级后必须完全退出并重新打开 DSH；页面刷新不够。v1.1.12 会在升级确认弹窗中、点击“安装更新”之前显示红色警告；全新安装不会看到这个弹窗。若升级后启动崩溃，使用 DSH 崩溃对话框的“重启”或“退出”。详见 [docs/RELEASE_ACCEPTANCE.md](docs/RELEASE_ACCEPTANCE.md) 的 carrier 限制。
 
 ### TokenWorks（词元工坊）
 
 TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deepseek-ai/dsh-plugin-manager`：
 
 1. 在左侧栏打开 **插件** → 点右上角 **+ 添加插件**；
-2. 填入 `github:Awenforever/dsh-ustc-quota#v1.1.11`；
+2. 填入 `github:Awenforever/dsh-ustc-quota#v1.1.12`；
 3. **全新安装**后只需让插件页加载/刷新一次；**从旧版本升级**则必须完全退出并重新打开词元工坊。TokenWorks 的插件页「更新」只应用 Host bundle，页面刷新不能清掉 DSH client-module 缓存；若刷新后插件仍未恢复，请完全退出并重开词元工坊；
 4. 用学校统一身份登录后，卡片会自动出现。
 
 > 词元工坊插件页的「官方」只列出发行版自带的插件；第三方插件（包括本插件）不会出现在「官方」里，安装后会出现在「已安装」区域。这是正常的，不是没有装上。
 
-> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.11；v1.1.11 已包含旧包 `package.json` 的 BOM 修复、额度接口错误文案修正、报警图标出现时自动加宽 Key 列，以及仅对升级用户显示的强制重启警告。安装/刷新后若仍未恢复，请完全退出并重开词元工坊，不要只凭一次页面刷新判断安装失败。
+> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.12；v1.1.12 已包含旧包 `package.json` 的 BOM 修复、额度接口错误文案修正、报警图标出现时自动加宽 Key 列，以及仅对升级用户显示的强制重启警告。安装/刷新后若仍未恢复，请完全退出并重开词元工坊，不要只凭一次页面刷新判断安装失败。
 
 TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
@@ -76,7 +76,7 @@ TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
 卡片独占侧边栏底部的一整行：TokenWorks 的「更新」按钮或 DSH 的 Cordis 按钮留在上一行，不会被并排挤压；卡片内部的三列也不会被截断。
 
-> v1.1.6 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.11，并刷新一次页面让新的 client bundle 生效。
+> v1.1.6 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.12，并刷新一次页面让新的 client bundle 生效。
 
 每把 Key（TokenWorks 下是当前账户）一行，三列：
 
@@ -181,6 +181,7 @@ tokenworksUsage.snapshot({language})
 - 从 v1.1.9 起，更新确认弹窗在“安装更新”前显示红色强制重启警告；安装后若 client 直接 import failed，插件 UI 无法显示任何提示，只能使用 DSH 崩溃对话框的重启/退出。
 - 从 v1.1.11 起，这条警告明确说明问题来自 **DSH Desktop 0.2.1-rc.3** 的 client-modules 增量扫描缓存、当前 DSH 版本仍未确认修复；并且只在“发现新版本”的升级弹窗出现。**全新安装不显示该警告，也不需要完全重启。**
 - 从 v1.1.11 起，警告不再硬编码 rc.4/rc.5 等具体补丁版本：它只提“0.2.1-rc.3 起、当前版本仍未确认修复”。只有 DSH 真正修复该问题时，才需要一次插件更新来移除警告，不需要每次 DSH 发版都改。
+- 从 v1.1.12 起，footer 布局会在其他插件新增 action 后重新归一化：本卡片设为 `order: 2147483647`、独占一行，其他常规 action 尽量留在上面。这是 best-effort；DSH 目前没有共享的 footer layout group，未知插件仍可能用自己的 order/position/`!important` 破坏排列。
 - 24h 可能是用户级预算，同一用户多把 Key 会共享；24h 单元格会标注“密钥级 / 用户级 / 上次查询”。
 - 12:00 / 00:00 边界上平台可能短暂返回旧用量；插件把过期窗口标成“重置中”，8 秒后重查。
 - 额度数值是平台额度单位（当前 3h/12h/24h 为 30/70/100），不是 DSH token 数；插件不擅自换算。

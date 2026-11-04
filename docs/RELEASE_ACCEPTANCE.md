@@ -22,7 +22,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.11 | 2026-11-03 |
+| Plugin | `dsh-ustc-quota` 1.1.12 | 2026-11-04 |
 | DSH desktop | 0.2.1-rc.3, official signed installer | 2026-10-29 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 30 `node:test` cases | 2026-10-29 |
@@ -47,7 +47,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.11` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.12` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -247,3 +247,23 @@ later plugin release remove or disable the warning.
 This is a text/UI-only change; no request, route, quota calculation, or snapshot
 field changed. The 30 unit tests pass and the release was not installed into the
 running user desktop.
+
+## 15. v1.1.12 best-effort footer layout hardening
+
+v1.1.12 hardens the sidebar footer normalization for unknown third-party
+actions:
+
+- the card gets `order: 2147483647`, so it follows ordinary footer actions;
+- the footer is wrapped and kept full-width;
+- a `MutationObserver` watches footer child-list changes and re-applies the
+  normalization when another plugin mounts an action later;
+- only the card's own chain and the footer are touched; other plugins' action
+  elements are not assigned an order.
+
+This remains best-effort because DSH has no shared footer layout-group contract.
+A later plugin can still use its own `order`, `position`, portal, or
+`!important` rules and defeat the arrangement. The formal fix belongs in the
+carrier: a full-width footer panel slot or declarative layout group.
+
+The 30 unit tests pass. This release was not installed into the running user
+desktop.
