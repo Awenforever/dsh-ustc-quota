@@ -11,11 +11,32 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.13';
+    const CLIENT_VERSION = '1.1.14';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
     const HOST_VERSION_KEY = `${NS}:host-version-reload`;
+
+    function readDshVersion() {
+      try {
+        const release = window.__DSH_BOOT__ && window.__DSH_BOOT__.release;
+        return release && typeof release.version === 'string' ? release.version : '';
+      } catch {
+        return '';
+      }
+    }
+
+    function dshSupportsHotUpdate(version) {
+      const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(String(version || ''));
+      if (!match) return false;
+      const major = Number(match[1]);
+      const minor = Number(match[2]);
+      const patch = Number(match[3]);
+      return major > 0 || minor > 2 || (minor === 2 && patch >= 2);
+    }
+
+    const DSH_VERSION = readDshVersion();
+    const DSH_HOT_UPDATE = dshSupportsHotUpdate(DSH_VERSION);
 
     let clientCtx = null;
     let activeSessionId = null;
@@ -75,6 +96,7 @@ window.__ModuleLoader__.load({
       updateApplied: '更新已安装。',
       updateRestart: '已安装，需要完全退出并重新打开 DSH 才能生效',
       updateRestartPrompt: '更新已安装。请完全退出 DSH 并重新打开；仅刷新页面或等待自动刷新不会清空 DSH 的 client-module 启动缓存。',
+      updateHotReload: '更新已安装，DSH 会热重载插件；若卡片仍是旧版本，刷新页面即可，不需要完整重启。',
       updateClose: '关闭',
       restartAfterUpdate: '插件已更新，请完全退出并重开 DSH',
       restartAfterUpdateHint: '更新已安装。仅刷新页面不会清空 DSH 的 client-module 启动缓存；请完全退出 DSH 后重新打开。',
@@ -145,6 +167,7 @@ window.__ModuleLoader__.load({
       updateApplied: 'Update installed.',
       updateRestart: 'Installed; fully quit and reopen DSH to apply it',
       updateRestartPrompt: "Update installed. Fully quit and reopen DSH; a page refresh or automatic reload will not clear DSH's client-module boot cache.",
+      updateHotReload: 'Update installed. DSH will hot-reload the plugin; if the card still shows the old version, refresh the page — a full restart is not required.',
       updateClose: 'Close',
       restartAfterUpdate: 'Plugin updated — fully quit and reopen DSH',
       restartAfterUpdateHint: 'The update is installed. A page refresh will not clear DSH client-module boot cache; fully quit and reopen DSH.',
@@ -851,7 +874,7 @@ window.__ModuleLoader__.load({
       const [updateApplying, setUpdateApplying] = React.useState(false);
       const [updateRestartPending, setUpdateRestartPending] = React.useState(false);
       const [restartNotice, setRestartNotice] = React.useState(
-        () => previousClientVersion !== null && previousClientVersion !== CLIENT_VERSION,
+        () => !DSH_HOT_UPDATE && previousClientVersion !== null && previousClientVersion !== CLIENT_VERSION,
       );
       const [updateNotice, setUpdateNotice] = React.useState('');
       const [updateError, setUpdateError] = React.useState('');
@@ -1089,20 +1112,24 @@ window.__ModuleLoader__.load({
             return;
           }
           const result = body.result;
-          if (result && result.changed === false) {
-            setUpdateApplying(false);
-            // A no-op from the manager usually means the package is already on
-            // disk but the running Host is still the old version. Ask for the
-            // full restart instead of reporting a misleading "up to date".
-            holdHostReload = true;
-            setUpdateRestartPending(true);
-            setUpdateResult(t('updateRestartPrompt'));
-            return;
-          }
           if (result && (result.application === 'failed' || result.error)) {
             setUpdateApplying(false);
             setUpdateError(t('updateFailed'));
             void checkForUpdate(true);
+            return;
+          }
+          const hotReload = DSH_HOT_UPDATE && !(result && result.application === 'restart-required');
+          if (result && result.changed === false) {
+            setUpdateApplying(false);
+            if (hotReload) {
+              setUpdateResult(t('updateHotReload'));
+              return;
+            }
+            // A no-op from an older manager usually means the package is
+            // already on disk but the running Host is still the old version.
+            holdHostReload = true;
+            setUpdateRestartPending(true);
+            setUpdateResult(t('updateRestartPrompt'));
             return;
           }
           setUpdateApplying(false);
@@ -1110,6 +1137,10 @@ window.__ModuleLoader__.load({
             holdHostReload = true;
             setUpdateRestartPending(true);
             setUpdateResult(t('updateRestartPrompt'));
+            return;
+          }
+          if (DSH_HOT_UPDATE) {
+            setUpdateResult(t('updateHotReload'));
             return;
           }
           holdHostReload = true;
@@ -1429,7 +1460,7 @@ window.__ModuleLoader__.load({
         h('div', { style: STYLE.modalVersion },
           `${t('updateCurrent')} v${CLIENT_VERSION}  →  ${t('updateLatest')} v${updateInfo.latestVersion}`
         ),
-        updateInfo.updateAvailable && !updateRestartPending
+        updateInfo.updateAvailable && !updateRestartPending && !DSH_HOT_UPDATE
           ? h('div', {
             style: STYLE.updateWarning,
             role: 'alert',

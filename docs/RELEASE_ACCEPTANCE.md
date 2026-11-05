@@ -22,8 +22,8 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.13 | 2026-11-05 |
-| DSH desktop | 0.2.1-rc.3, official signed installer | 2026-10-29 |
+| Plugin | `dsh-ustc-quota` 1.1.14 | 2026-11-05 |
+| DSH desktop | 0.2.1-rc.3 and 0.2.2-rc.1 | 2026-11-05 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 31 `node:test` cases | 2026-11-05 |
 | OS | Windows 11 10.0.26200 x64 | 2026-10-29 |
@@ -47,7 +47,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.13` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.14` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -298,4 +298,29 @@ error. 31 unit tests pass.
 The first upgrade from v1.1.11/v1.1.12 to v1.1.13 still runs the old update
 code; if it fails, install v1.1.13 directly from the plugin page. Subsequent
 updates use the fixed path. The release was not installed into the running user
+desktop.
+
+## 17. v1.1.14 DSH 0.2.2 hot-update adaptation
+
+DSH Desktop 0.2.2-rc.1, published in the nightly feed on 2026-11-04, adds
+third-party plugin package updates and falls back to the previous version when
+a hot update fails. v1.1.14 reads the running release from
+`window.__DSH_BOOT__.release.version`:
+
+- on 0.2.2-rc.1 and later, the upgrade modal suppresses the forced-restart
+  warning, the post-update restart banner is suppressed, and a successful
+  update shows the “DSH will hot-reload the plugin” message;
+- on 0.2.1-rc.3 through 0.2.1-rc.5, the existing forced-restart warning and
+  banner remain;
+- an explicit `application: "restart-required"` result still shows the restart
+  prompt on every DSH version.
+
+Verified in the isolated `win11-test` VM updated to 0.2.2-rc.1: v1.1.13 loaded
+and the update route and footer slot remained functional; v1.1.14 was then
+installed into the test profile and the card showed v1.1.14 with no restart
+banner. A test-only copy of the v1.1.14 client labelled 1.1.12 opened the
+update modal without the red preinstall warning. The actual v1.1.12-to-v1.1.13
+update on 0.2.2-rc.1 also hot-reloaded without an app restart.
+
+The 31 unit tests pass. The release was not installed into the running user
 desktop.
