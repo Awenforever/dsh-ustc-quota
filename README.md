@@ -17,7 +17,7 @@
 | DeepSeek Harness Web / Desktop | `0.2.0-rc.2` 及以上 | `llm-pi-ai` provider 配置 + `credentials` + `/key/info`、`/user/info` |
 | 中国科大词元工坊 TokenWorks | `0.2.x` | 内置 `tokenworksUsage` 服务（`@ustc/tokenworks-usage`） |
 
-2026-10-31 在隔离的 `win11-test` 测试 profile 上用 **v1.1.6** 验证 DSH Desktop **0.2.1-rc.5**：卡片、`snapshot`、`update` 路由和 `dsh-plugin-manager` provider 均正常；v1.1.7 只修正额度接口 401/403 的错误文案，不改变数据或请求逻辑。
+兼容性：已在 DSH Desktop **0.2.1-rc.5** 和 **0.2.2-rc.1** 上验证卡片、`snapshot`/`update` 路由和 `dsh-plugin-manager` provider；0.2.2+ 使用热更新提示，旧版保留完整重启提示。
 
 插件没有运行时依赖，Host 使用 Node 24 自带的 `fetch`，Client 只用 React 和主题 token。
 

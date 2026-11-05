@@ -1,9 +1,11 @@
 # Release Acceptance — Windows Native
 
-This document is the release gate for the Windows-native DSH desktop and
-TokenWorks (词元工坊) surfaces of `dsh-ustc-quota`. It records the exact
-environment, test matrix, observed results, and the known DSH carrier
-limitation. Product behavior remains documented in [`README.md`](../README.md).
+This document is the maintainer/QA release gate for the Windows-native DSH
+desktop and TokenWorks (词元工坊) surfaces of `dsh-ustc-quota`. It records the
+exact environment, test matrix, observed results, and the known DSH carrier
+limitation. It is not end-user documentation; user-facing behavior is
+documented in [`README.md`](../README.md), and public release notes should stay
+user-facing.
 
 ## 1. Scope
 
