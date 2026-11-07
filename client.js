@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.14';
+    const CLIENT_VERSION = '1.1.15';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -63,6 +63,141 @@ window.__ModuleLoader__.load({
 
     function getActiveSession() {
       return activeSessionId;
+    }
+
+    // A split-view host renders one conversation.composer.dock per pane. The
+    // session id alone cannot tell which pane has focus, so each probe renders
+    // a tiny hidden marker and a document-level focus/pointer resolver picks
+    // the pane whose DOM contains the event target. This deliberately avoids
+    // depending on a specific split plugin's class names or state.
+    const sessionProbes = new Map();
+    let sessionProbeListening = false;
+    let sessionProbeObserver = null;
+
+    function nearestCommonAncestor(a, b) {
+      const seen = new Set();
+      for (let node = a; node; node = node.parentElement) seen.add(node);
+      for (let node = b; node; node = node.parentElement) {
+        if (seen.has(node)) return node;
+      }
+      return null;
+    }
+
+    function elementDepth(node) {
+      let depth = 0;
+      for (let current = node; current; current = current.parentElement) depth += 1;
+      return depth;
+    }
+
+    function hasOtherSessionMarker(container, sessionId) {
+      for (const [otherId, markers] of sessionProbes) {
+        if (otherId === sessionId) continue;
+        for (const marker of markers) {
+          if (container.contains(marker)) return true;
+        }
+      }
+      return false;
+    }
+
+    function resolveSessionForTarget(target) {
+      if (!target || target.nodeType !== 1 || typeof document === 'undefined') return null;
+      let best = null;
+      for (const [id, markers] of sessionProbes) {
+        for (const marker of markers) {
+          const common = nearestCommonAncestor(marker, target);
+          if (!common || common === document.body || common === document.documentElement) continue;
+          // If the common ancestor also contains another session's marker, the
+          // target is in a shared container (split shell/toolbar), not a pane.
+          if (hasOtherSessionMarker(common, id)) continue;
+          const depth = elementDepth(common);
+          if (!best || depth > best.depth) best = { id, depth };
+        }
+      }
+      return best ? best.id : null;
+    }
+
+    function findExplicitFocusedSession() {
+      for (const [id, markers] of sessionProbes) {
+        for (const marker of markers) {
+          for (let node = marker.parentElement; node && node !== document.body; node = node.parentElement) {
+            const focused = node.getAttribute && node.getAttribute('data-focused');
+            const selected = node.getAttribute && node.getAttribute('aria-selected');
+            if (focused === 'true' || selected === 'true') return id;
+          }
+        }
+      }
+      return null;
+    }
+
+    function syncFocusedSession() {
+      const explicit = findExplicitFocusedSession();
+      if (explicit) {
+        setActiveSession(explicit);
+        return;
+      }
+      if (typeof document !== 'undefined' && document.activeElement) {
+        const focused = resolveSessionForTarget(document.activeElement);
+        if (focused) setActiveSession(focused);
+      }
+    }
+
+    function handleSessionFocusEvent(event) {
+      const id = resolveSessionForTarget(event.target);
+      if (id) setActiveSession(id);
+    }
+
+    function ensureSessionProbeListeners() {
+      if (sessionProbeListening || typeof document === 'undefined') return;
+      sessionProbeListening = true;
+      document.addEventListener('focusin', handleSessionFocusEvent, true);
+      document.addEventListener('pointerdown', handleSessionFocusEvent, true);
+      if (typeof MutationObserver !== 'undefined') {
+        sessionProbeObserver = new MutationObserver(() => {
+          const explicit = findExplicitFocusedSession();
+          if (explicit) setActiveSession(explicit);
+        });
+        sessionProbeObserver.observe(document.body, {
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['data-focused', 'aria-selected'],
+        });
+      }
+    }
+
+    function releaseSessionProbeListeners() {
+      if (!sessionProbeListening || typeof document === 'undefined') return;
+      sessionProbeListening = false;
+      document.removeEventListener('focusin', handleSessionFocusEvent, true);
+      document.removeEventListener('pointerdown', handleSessionFocusEvent, true);
+      if (sessionProbeObserver) {
+        sessionProbeObserver.disconnect();
+        sessionProbeObserver = null;
+      }
+    }
+
+    function registerSessionProbe(id, marker) {
+      let markers = sessionProbes.get(id);
+      if (!markers) {
+        markers = new Set();
+        sessionProbes.set(id, markers);
+      }
+      markers.add(marker);
+      ensureSessionProbeListeners();
+      if (activeSessionId === null) setActiveSession(id);
+      syncFocusedSession();
+      return () => {
+        const current = sessionProbes.get(id);
+        if (current) {
+          current.delete(marker);
+          if (current.size === 0) sessionProbes.delete(id);
+        }
+        if (activeSessionId === id && !sessionProbes.has(id)) {
+          const next = sessionProbes.keys().next();
+          if (!next.done) setActiveSession(next.value);
+          else clearActiveSession(id);
+        }
+        if (sessionProbes.size === 0) releaseSessionProbeListeners();
+      };
     }
 
     const zh = {
@@ -220,7 +355,7 @@ window.__ModuleLoader__.load({
         border: '1px solid var(--dsw-alias-border-l1)',
         borderRadius: 12,
         background: 'var(--dsw-alias-bg-layer-1)',
-        boxShadow: '0 3px 12px rgba(15, 23, 42, 0.07)',
+        boxShadow: '0 3px 12px rgba(0, 0, 0, 0.16)',
         display: 'flex',
         flexDirection: 'column',
         gap: 5,
@@ -434,7 +569,7 @@ window.__ModuleLoader__.load({
         position: 'fixed',
         inset: 0,
         zIndex: 10000,
-        background: 'rgba(15, 23, 42, 0.38)',
+        background: 'rgba(0, 0, 0, 0.42)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -449,8 +584,8 @@ window.__ModuleLoader__.load({
         padding: 14,
         border: '1px solid var(--dsw-alias-border-l1)',
         borderRadius: 12,
-        background: 'var(--dsw-alias-bg-layer-1)',
-        boxShadow: '0 18px 48px rgba(15, 23, 42, 0.25)',
+        background: 'var(--dsw-alias-bg-overlay)',
+        boxShadow: '0 18px 48px rgba(0, 0, 0, 0.28)',
         display: 'flex',
         flexDirection: 'column',
         gap: 9,
@@ -485,9 +620,9 @@ window.__ModuleLoader__.load({
         lineHeight: 1.5,
         fontWeight: 600,
         color: 'var(--dsw-alias-label-primary)',
-        background: 'rgba(217, 119, 6, 0.12)',
-        border: '1px solid rgba(217, 119, 6, 0.35)',
-        borderLeft: '3px solid #d97706',
+        background: 'color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary) 35%, transparent)',
+        borderLeft: '3px solid var(--dsw-alias-state-warn-primary)',
         borderRadius: 6,
         padding: '8px 9px',
       },
@@ -497,9 +632,9 @@ window.__ModuleLoader__.load({
         gap: 7,
         padding: '9px 10px',
         borderRadius: 6,
-        background: 'rgba(220, 38, 38, 0.12)',
-        border: '1px solid rgba(220, 38, 38, 0.55)',
-        borderLeft: '4px solid #dc2626',
+        background: 'color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 55%, transparent)',
+        borderLeft: '4px solid var(--dsw-alias-state-error-primary)',
         color: 'var(--dsw-alias-label-primary)',
       },
       updateWarningIcon: {
@@ -531,8 +666,8 @@ window.__ModuleLoader__.load({
         marginTop: 1,
         padding: '5px 7px',
         borderRadius: 6,
-        background: 'rgba(217, 119, 6, 0.12)',
-        borderLeft: '3px solid #d97706',
+        background: 'color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent)',
+        borderLeft: '3px solid var(--dsw-alias-state-warn-primary)',
         color: 'var(--dsw-alias-label-primary)',
         fontSize: 9,
         lineHeight: 1.4,
@@ -798,16 +933,22 @@ window.__ModuleLoader__.load({
     }
 
     // The sidebar footer is global, while the key actually in use is chosen per
-    // conversation. A null occupant in the conversation composer dock captures
-    // the open session id; the card then reads that session's durable
-    // modelSelection projection, so switching conversations moves the star.
+    // conversation. This marker lives in each pane's composer dock; the focus
+    // resolver above turns it into the active session that owns the star.
     function SessionProbe(props) {
       const id = typeof props.sessionId === 'string' ? props.sessionId : null;
+      const markerRef = React.useRef(null);
       React.useLayoutEffect(() => {
-        setActiveSession(id);
-        return () => clearActiveSession(id);
+        const marker = markerRef.current;
+        if (!marker || !id) return undefined;
+        return registerSessionProbe(id, marker);
       }, [id]);
-      return null;
+      return h('span', {
+        ref: markerRef,
+        'data-ustc-quota-session-probe': id || '',
+        'aria-hidden': true,
+        style: { display: 'none' },
+      });
     }
 
     function useActiveSessionProvider() {

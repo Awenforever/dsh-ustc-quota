@@ -24,10 +24,10 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.14 | 2026-11-05 |
-| DSH desktop | 0.2.1-rc.3 and 0.2.2-rc.1 | 2026-11-05 |
+| Plugin | `dsh-ustc-quota` 1.1.15 | 2026-11-07 |
+| DSH desktop | 0.2.1-rc.3 and 0.2.2-rc.1 | 2026-11-07 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
-| Unit tests | 31 `node:test` cases | 2026-11-05 |
+| Unit tests | 31 `node:test` cases | 2026-11-07 |
 | OS | Windows 11 10.0.26200 x64 | 2026-10-29 |
 
 ## 3. Preconditions
@@ -49,7 +49,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.14` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.15` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -323,6 +323,30 @@ installed into the test profile and the card showed v1.1.14 with no restart
 banner. A test-only copy of the v1.1.14 client labelled 1.1.12 opened the
 update modal without the red preinstall warning. The actual v1.1.12-to-v1.1.13
 update on 0.2.2-rc.1 also hot-reloaded without an app restart.
+
+The 31 unit tests pass. The release was not installed into the running user
+desktop.
+
+## 18. v1.1.15 split focus and dark theme
+
+v1.1.15 adds two client-side behaviors:
+
+- **Split focus:** each `conversation.composer.dock` registers a hidden session
+  marker. `focusin` / `pointerdown` resolve the nearest session-owned pane;
+  shared split containers with multiple markers are ignored. Explicit
+  `data-focused` / `aria-selected` attributes cover hosts that expose focus
+  state without moving DOM focus.
+- **Dark theme:** card and modal surfaces use DSH light/dark tokens; warning
+  and restart accents are derived with `color-mix` from DSH state tokens.
+  There is no separate theme switch; DSH theme changes apply through CSS
+  variables.
+
+Verification: in the isolated `win11-test` profile on DSH 0.2.2-rc.1 with
+`dsh-multiview` 0.1.4, a test-instrumented copy of v1.1.15 was opened in a
+three-session layout. Clicking pane p1 changed the active session from the
+p3 session to the p1 session; clicking p3 changed it back. The focused pane
+attribute also moved `p1:true → p3:true`. A focused star therefore follows the
+pane. The user also confirmed the live dark theme after a full DSH restart.
 
 The 31 unit tests pass. The release was not installed into the running user
 desktop.
