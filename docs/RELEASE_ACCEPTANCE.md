@@ -24,10 +24,10 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.15 | 2026-11-07 |
-| DSH desktop | 0.2.1-rc.3 and 0.2.2-rc.1 | 2026-11-07 |
+| Plugin | `dsh-ustc-quota` 1.1.16 | 2026-11-09 |
+| DSH desktop | 0.2.1-rc.3 and 0.2.2-rc.1 | 2026-11-09 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
-| Unit tests | 31 `node:test` cases | 2026-11-07 |
+| Unit tests | 37 `node:test` cases | 2026-11-09 |
 | OS | Windows 11 10.0.26200 x64 | 2026-10-29 |
 
 ## 3. Preconditions
@@ -49,7 +49,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.15` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.16` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -138,7 +138,7 @@ documented as “no restart ever needed”.
 ## 7. Release Checklist
 
 - [ ] `node --check` passes for host and client sources.
-- [ ] 31 unit tests pass.
+- [ ] 37 unit tests pass.
 - [ ] Plugin version, `CLIENT_VERSION`, and `PLUGIN_VERSION` are consistent.
 - [ ] README and this acceptance document are updated.
 - [ ] Release tag is created from the tested commit.
@@ -350,3 +350,37 @@ pane. The user also confirmed the live dark theme after a full DSH restart.
 
 The 31 unit tests pass. The release was not installed into the running user
 desktop.
+
+## 19. v1.1.16 npm publication and the official update channel
+
+v1.1.16 moves the update path onto the official DSH seam that 0.2.2 exposes on
+`pluginManager`:
+
+| Step | Preferred | Fallback |
+|---|---|---|
+| Version discovery | `pluginManager.listVersions('dsh-ustc-quota')` | GitHub `releases/latest` |
+| Apply | `pluginManager.updateBundle(name, version)` | `pluginManager.installBundle(tarball spec)` |
+| Last resort | copyable install spec in the modal | — |
+
+Discovery failures are silent: a profile installed from the GitHub tarball is
+not a registry dependency, so `listVersions` answers `not-updatable` and the
+card keeps using the release feed. The registry version wins only when it is at
+least as new as the GitHub release, and `updateBundle` refusals (for example a
+tarball-installed copy) fall back to the release tarball instead of surfacing a
+failed update.
+
+Publication: `dsh-ustc-quota@1.1.15` was bootstrapped once with a short-lived
+token because npm cannot publish a package's first version through OIDC
+(npm/cli#8544). Every later version is published by
+`.github/workflows/publish.yml` from a `v*` tag using npm Trusted Publishing
+(OIDC) with provenance; the repository stores no npm credential.
+
+Verification: `node --check` on all four modules, 37 `node:test` cases, and
+`npm pack --dry-run` (11 files, 38.3 kB) pass. The published 1.1.15 tarball was
+re-read from the registry and its integrity matched the local manifest. The
+package was not installed over the running user desktop; the production profile
+keeps its GitHub-tarball install until the user switches it.
+
+Outstanding: the Trusted Publisher entry on npmjs.com must be created once for
+`dsh-ustc-quota` (GitHub Actions → `Awenforever/dsh-ustc-quota` →
+`publish.yml`) before a tag can publish.

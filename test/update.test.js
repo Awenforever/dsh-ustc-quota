@@ -4,8 +4,11 @@ import assert from 'node:assert/strict';
 import {
   UpdateService,
   compareVersions,
+  discoverRegistryUpdate,
   normalizeVersion,
   parseGitHubRelease,
+  pickRegistryVersion,
+  registrySpecForVersion,
   resolveUpdateProvider,
   specForVersion,
 } from '../update.js';
@@ -168,5 +171,157 @@ test('UpdateService force bypasses the cache and handles an up-to-date release',
   assert.equal(result.canApply, false);
   assert.equal(result.provider.id, 'manual');
   assert.equal(fetchImpl.calls.count, 1);
+});
+
+function versionList(versions, options = {}) {
+  return {
+    status: 'listed',
+    installed: options.installed || '1.1.15',
+    registry: options.registry || 'https://registry.npmjs.org/',
+    attempts: [],
+    omitted: 0,
+    versions: versions.map((version) => ({
+      version,
+      tags: [],
+      prerelease: String(version).includes('-'),
+      bundle: true,
+    })),
+  };
+}
+
+test('pickRegistryVersion keeps the newest stable entry and ignores prereleases', () => {
+  assert.equal(pickRegistryVersion(versionList(['1.1.16', '1.1.17', '1.2.0-rc.1'])), '1.1.17');
+  assert.equal(pickRegistryVersion(versionList(['1.2.0-rc.1'])), '1.2.0-rc.1');
+  assert.equal(pickRegistryVersion({ status: 'refused', problem: 'not-updatable' }), null);
+  assert.equal(pickRegistryVersion(versionList([])), null);
+
+  const blocked = versionList(['1.1.18']);
+  blocked.versions[0].incompatible = { name: 'dsh-ustc-quota', version: '1.1.18', runtimeVersion: '0.1.0', requirements: {} };
+  assert.equal(pickRegistryVersion(blocked), null);
+});
+
+test('discoverRegistryUpdate stays silent when the carrier cannot answer', async () => {
+  assert.equal(await discoverRegistryUpdate(ctxWith(), '1.1.15'), null);
+
+  const refusing = ctxWith({
+    pluginManager: {
+      async listVersions() {
+        throw new Error('registry-offline');
+      },
+    },
+  });
+  assert.equal(await discoverRegistryUpdate(refusing, '1.1.15'), null);
+
+  const upToDate = ctxWith({
+    pluginManager: { listVersions: async () => versionList(['1.1.15']) },
+  });
+  assert.equal(await discoverRegistryUpdate(upToDate, '1.1.15'), null);
+
+  const found = await discoverRegistryUpdate(ctxWith({
+    pluginManager: { listVersions: async () => versionList(['1.1.16', '1.1.20']) },
+  }), '1.1.15');
+  assert.deepEqual(found, { version: '1.1.20', registry: 'https://registry.npmjs.org/' });
+});
+
+test('resolveUpdateProvider exposes the registry update alongside the tarball install', async () => {
+  const calls = [];
+  const provider = resolveUpdateProvider(ctxWith({
+    pluginManager: {
+      async updateBundle(name, version) {
+        calls.push({ kind: 'update', name, version });
+        return { from: '1.1.15', to: version, step: 'install', result: { changed: true, application: 'applied' } };
+      },
+      async installBundle(spec, options) {
+        calls.push({ kind: 'install', spec, options });
+        return { changed: true, application: 'applied' };
+      },
+    },
+  }));
+  assert.equal(provider.id, 'dsh-plugin-manager');
+  assert.equal(provider.canRegistry, true);
+  assert.equal(registrySpecForVersion('v1.1.16'), 'dsh-ustc-quota@1.1.16');
+
+  await provider.applyRegistry('1.1.16');
+  assert.deepEqual(calls[0], { kind: 'update', name: 'dsh-ustc-quota', version: '1.1.16' });
+});
+
+test('UpdateService prefers the official registry version when it is newest', async () => {
+  const service = new UpdateService(ctxWith({
+    pluginManager: {
+      listVersions: async () => versionList(['1.1.16']),
+      updateBundle: async (name, version) => ({
+        from: '1.1.15',
+        to: version,
+        step: 'install',
+        result: { changed: true, application: 'applied' },
+      }),
+      installBundle: async () => {
+        throw new Error('install must not run when the registry path succeeds');
+      },
+    },
+  }), {
+    currentVersion: '1.1.15',
+    fetchImpl: fetchWith(release('1.1.15')),
+    now: () => 3000,
+  });
+
+  const info = await service.check(true);
+  assert.equal(info.source, 'registry');
+  assert.equal(info.latestVersion, '1.1.16');
+  assert.equal(info.spec, 'dsh-ustc-quota@1.1.16');
+  assert.equal(info.installSpec, 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v1.1.16.tar.gz');
+
+  const applied = await service.apply({ spec: info.spec });
+  assert.equal(applied.ok, true);
+  assert.equal(applied.attempt, 'registry');
+  assert.equal(applied.fallbackReason, null);
+});
+
+test('UpdateService falls back to the release tarball when the registry update is refused', async () => {
+  const installs = [];
+  const service = new UpdateService(ctxWith({
+    pluginManager: {
+      listVersions: async () => versionList(['1.1.16']),
+      updateBundle: async () => ({
+        from: '1.1.15',
+        to: '1.1.16',
+        step: 'check',
+        result: { changed: false, application: 'failed', error: { code: 'not-updatable' } },
+      }),
+      async installBundle(spec, options) {
+        installs.push({ spec, options });
+        return { changed: true, application: 'applied' };
+      },
+    },
+  }), {
+    currentVersion: '1.1.15',
+    fetchImpl: fetchWith(release('1.1.15')),
+    now: () => 4000,
+  });
+
+  const applied = await service.apply();
+  assert.equal(applied.ok, true);
+  assert.equal(applied.attempt, 'install');
+  assert.equal(applied.fallbackReason, 'registry-refused');
+  assert.equal(installs[0].spec, 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v1.1.16.tar.gz');
+});
+
+test('UpdateService keeps the release feed when GitHub is ahead of the registry', async () => {
+  const service = new UpdateService(ctxWith({
+    pluginManager: {
+      listVersions: async () => versionList(['1.1.16']),
+      updateBundle: async () => ({ from: '1.1.15', to: '1.1.16', step: 'install', result: { changed: true } }),
+      installBundle: async () => ({ changed: true, application: 'applied' }),
+    },
+  }), {
+    currentVersion: '1.1.15',
+    fetchImpl: fetchWith(release('1.1.17')),
+    now: () => 5000,
+  });
+
+  const info = await service.check(true);
+  assert.equal(info.source, 'github');
+  assert.equal(info.latestVersion, '1.1.17');
+  assert.equal(info.spec, 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v1.1.17.tar.gz');
 });
 

@@ -1,16 +1,19 @@
 /**
  * Update support for dsh-ustc-quota.
  *
- * The release feed is GitHub's latest non-prerelease release. Applying an
- * update is deliberately delegated to the carrier's plugin manager (the
- * current DSH `pluginManager` Remote, or a future `pluginUpdates` service)
- * instead of running package-manager commands from this plugin. That keeps the
- * update path inside the official profile lifecycle and gives us one adapter
- * seam for the upcoming DSH plugin-update preview.
+ * Discovery prefers the carrier's official registry lookup
+ * (`pluginManager.listVersions`, which only answers for registry-installed
+ * packages) and falls back to GitHub's latest non-prerelease release. Applying
+ * an update is delegated to the carrier as well: `pluginManager.updateBundle`
+ * for registry versions, `pluginManager.installBundle` with the release
+ * tarball otherwise, and a copyable spec when neither exists. Nothing here runs
+ * a package-manager command from the plugin, so every write stays inside the
+ * official profile lifecycle.
  */
 
 export const PLUGIN_ID = 'dsh-ustc-quota';
 export const REPOSITORY = 'Awenforever/dsh-ustc-quota';
+export const DEFAULT_REGISTRY = 'https://registry.npmjs.org/';
 export const UPDATE_ARCHIVE_BASE = `https://github.com/${REPOSITORY}/archive/refs/tags`;
 export const UPDATE_MAIN_SPEC = `https://github.com/${REPOSITORY}/archive/refs/heads/main.tar.gz`;
 export const DEFAULT_UPDATE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -58,6 +61,11 @@ export function specForVersion(version) {
   return `${UPDATE_ARCHIVE_BASE}/v${normalizeVersion(version)}.tar.gz`;
 }
 
+/** The registry spec a user would paste into the plugin page. */
+export function registrySpecForVersion(version) {
+  return `${PLUGIN_ID}@${normalizeVersion(version)}`;
+}
+
 export function releaseUrlForVersion(version) {
   return `https://github.com/${REPOSITORY}/releases/tag/v${normalizeVersion(version)}`;
 }
@@ -78,6 +86,52 @@ export function parseGitHubRelease(payload) {
   };
 }
 
+/**
+ * Pick the newest usable stable version from a `PluginVersionList`.
+ *
+ * A prerelease is skipped unless it is the only entry (the package itself may
+ * ship `-rc.N` while a line is being tested). Versions the carrier marked as
+ * incompatible with the running DSH version are never offered.
+ */
+export function pickRegistryVersion(list) {
+  if (!list || list.status !== 'listed' || !Array.isArray(list.versions)) return null;
+  const usable = list.versions
+    .filter((entry) => entry && typeof entry.version === 'string')
+    .filter((entry) => !entry.incompatible)
+    .map((entry) => ({ version: normalizeVersion(entry.version), prerelease: entry.prerelease === true }))
+    .filter((entry) => entry.version);
+  if (!usable.length) return null;
+  const stable = usable.filter((entry) => !entry.prerelease);
+  const pool = stable.length ? stable : usable;
+  return pool.reduce((best, next) => (compareVersions(next.version, best) > 0 ? next : best)).version;
+}
+
+/**
+ * Ask the carrier for published registry versions of this plugin.
+ *
+ * `listVersions` only answers for a registry-installed dependency, so a profile
+ * that installed the GitHub tarball simply gets `null` and keeps using the
+ * release feed. Any failure is silent: discovery must never break the card.
+ *
+ * @returns {Promise<null | { version: string, registry: string }>}
+ */
+export async function discoverRegistryUpdate(ctx, currentVersion) {
+  const manager = readService(ctx, 'pluginManager');
+  if (!manager || typeof manager.listVersions !== 'function') return null;
+  let list;
+  try {
+    list = await manager.listVersions(PLUGIN_ID);
+  } catch {
+    return null;
+  }
+  const version = pickRegistryVersion(list);
+  if (!version || !isUpdateAvailable(currentVersion, version)) return null;
+  return {
+    version,
+    registry: typeof list.registry === 'string' && list.registry ? list.registry : DEFAULT_REGISTRY,
+  };
+}
+
 function readService(ctx, key) {
   try {
     return ctx && typeof ctx.get === 'function' ? ctx.get(key) : undefined;
@@ -86,13 +140,27 @@ function readService(ctx, key) {
   }
 }
 
+/** Collapse a `PluginUpdateResult` to the ChangeResult it carries. */
+function unwrapUpdateResult(result) {
+  if (!result || typeof result !== 'object') return result;
+  if (result.result && typeof result.result === 'object') return result.result;
+  return result;
+}
+
+function resultFailed(result) {
+  if (!result || typeof result !== 'object') return true;
+  if (result.error) return true;
+  if (result.application === 'failed' || result.application === 'cancelled') return true;
+  // A `PluginUpdateResult` that stopped at `check` or `remove` never installed.
+  if (typeof result.step === 'string' && result.step !== 'install') return true;
+  return false;
+}
+
 /**
- * Resolve the carrier's update adapter.
+ * Resolve the carrier's update adapter, preferring the official registry path.
  *
- * Reserved contract for the upcoming official DSH plugin-update preview:
- *   ctx.get('pluginUpdates').applyUpdate({ id, spec, version })
- * If that service is absent, the current official `pluginManager.installBundle`
- * is used. If neither exists, the UI stays on the manual-spec path.
+ * Order: reserved `pluginUpdates`/`pluginUpdater` preview → `pluginManager`
+ * (registry update plus tarball install) → manual spec.
  *
  * @returns {PluginUpdateProvider}
  */
@@ -110,20 +178,32 @@ export function resolveUpdateProvider(ctx) {
         label: 'official-plugin-updates',
         experimental: true,
         canApply: true,
+        canRegistry: false,
+        applyRegistry: null,
         apply: (spec, meta) => apply({ id: PLUGIN_ID, spec, version: meta && meta.version }),
       };
     }
   }
 
   const manager = readService(ctx, 'pluginManager');
-  if (manager && typeof manager.installBundle === 'function') {
-    return {
-      id: 'dsh-plugin-manager',
-      label: 'dsh-plugin-manager',
-      experimental: true,
-      canApply: true,
-      apply: (spec) => manager.installBundle(spec, { saveExact: true }),
-    };
+  if (manager) {
+    const canRegistry = typeof manager.updateBundle === 'function';
+    const canInstall = typeof manager.installBundle === 'function';
+    if (canRegistry || canInstall) {
+      return {
+        id: 'dsh-plugin-manager',
+        label: 'dsh-plugin-manager',
+        experimental: true,
+        canApply: true,
+        canRegistry,
+        applyRegistry: canRegistry
+          ? (version) => manager.updateBundle(PLUGIN_ID, normalizeVersion(version))
+          : null,
+        apply: canInstall
+          ? (spec) => manager.installBundle(spec, { saveExact: true })
+          : (spec, meta) => manager.updateBundle(PLUGIN_ID, normalizeVersion(meta && meta.version)),
+      };
+    }
   }
 
   return {
@@ -131,6 +211,8 @@ export function resolveUpdateProvider(ctx) {
     label: 'manual',
     experimental: false,
     canApply: false,
+    canRegistry: false,
+    applyRegistry: null,
     apply: null,
   };
 }
@@ -192,14 +274,50 @@ export class UpdateService {
     if (!provider.canApply) {
       return { ok: false, error: 'provider-unavailable', spec: info.spec };
     }
-    const result = await provider.apply(info.spec, { version: info.latestVersion });
+
+    let attempt = 'install';
+    let fallbackReason = null;
+    let result = null;
+
+    if (info.source === 'registry' && typeof provider.applyRegistry === 'function') {
+      attempt = 'registry';
+      try {
+        result = await provider.applyRegistry(info.latestVersion);
+      } catch (error) {
+        result = null;
+        fallbackReason = error && error.message ? String(error.message) : 'update-threw';
+      }
+      if (resultFailed(result)) {
+        // A profile that installed the release tarball is not a registry
+        // dependency, so the carrier refuses `updateBundle`. Fall back to the
+        // install spec instead of surfacing that as a failed update.
+        fallbackReason = fallbackReason || 'registry-refused';
+        result = null;
+      }
+    }
+
     if (!result) {
+      attempt = 'install';
+      try {
+        result = await provider.apply(specForVersion(info.latestVersion), { version: info.latestVersion });
+      } catch (error) {
+        return {
+          ok: false,
+          error: 'apply-failed',
+          spec: info.spec,
+          message: error && error.message ? String(error.message) : 'install-threw',
+        };
+      }
+    }
+
+    const flat = attempt === 'registry' ? unwrapUpdateResult(result) : result;
+    if (!flat) {
       return { ok: false, error: 'apply-failed', spec: info.spec };
     }
-    if (result.application === 'failed' || result.error) {
-      return { ok: false, error: 'apply-failed', spec: info.spec, result };
+    if (flat.application === 'failed' || flat.application === 'cancelled' || flat.error) {
+      return { ok: false, error: 'apply-failed', spec: info.spec, result, attempt };
     }
-    if (result.changed === false) {
+    if (flat.changed === false) {
       // The manager may already have the package installed (for example a
       // previous attempt installed it but the response was lost), or it may
       // legitimately have nothing to change. This is not a failed update and
@@ -207,10 +325,12 @@ export class UpdateService {
       return {
         ok: true,
         changed: false,
-        application: typeof result.application === 'string' ? result.application : 'noop',
+        application: typeof flat.application === 'string' ? flat.application : 'noop',
         spec: info.spec,
         latestVersion: info.latestVersion,
         provider: serializeProvider(provider),
+        attempt,
+        fallbackReason,
         result,
       };
     }
@@ -220,6 +340,8 @@ export class UpdateService {
       spec: info.spec,
       latestVersion: info.latestVersion,
       provider: serializeProvider(provider),
+      attempt,
+      fallbackReason,
       result,
     };
   }
@@ -245,17 +367,31 @@ export class UpdateService {
         repository: this.repository,
         timeoutMs: this.timeoutMs,
       });
-      const updateAvailable = isUpdateAvailable(this.currentVersion, release.version);
+
+      // Official discovery first, release feed second. `listVersions` only
+      // answers for a registry-installed dependency; anything else keeps the
+      // GitHub release as the source of truth.
+      const registryHit = await discoverRegistryUpdate(this.ctx, this.currentVersion);
+      const preferRegistry = Boolean(registryHit)
+        && compareVersions(registryHit.version, release.version) >= 0;
+
+      const latestVersion = preferRegistry ? registryHit.version : release.version;
+      const updateAvailable = isUpdateAvailable(this.currentVersion, latestVersion);
       const info = {
         ok: true,
         currentVersion: this.currentVersion,
-        latestVersion: release.version,
+        latestVersion,
         updateAvailable,
-        spec: specForVersion(release.version),
-        releaseUrl: release.htmlUrl || releaseUrlForVersion(release.version),
-        releaseName: release.name,
-        releaseNotes: release.notes.slice(0, 4000),
-        publishedAt: release.publishedAt,
+        source: preferRegistry ? 'registry' : 'github',
+        spec: preferRegistry ? registrySpecForVersion(latestVersion) : specForVersion(latestVersion),
+        installSpec: specForVersion(latestVersion),
+        registry: preferRegistry ? registryHit.registry : null,
+        releaseUrl: preferRegistry
+          ? releaseUrlForVersion(latestVersion)
+          : (release.htmlUrl || releaseUrlForVersion(release.version)),
+        releaseName: preferRegistry ? `${PLUGIN_ID} ${latestVersion}` : release.name,
+        releaseNotes: preferRegistry ? '' : release.notes.slice(0, 4000),
+        publishedAt: preferRegistry ? null : release.publishedAt,
         checkedAt: new Date(now).toISOString(),
       };
       this.cached = info;
