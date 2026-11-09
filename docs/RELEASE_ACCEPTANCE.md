@@ -384,3 +384,10 @@ keeps its GitHub-tarball install until the user switches it.
 Outstanding: the Trusted Publisher entry on npmjs.com must be created once for
 `dsh-ustc-quota` (GitHub Actions → `Awenforever/dsh-ustc-quota` →
 `publish.yml`) before a tag can publish.
+
+That entry now exists, and 1.1.16 was the first tag publish through it. The
+first attempt failed with a bare `ENEEDAUTH` because `setup-node` was pinned to
+Node 22 (npm 10), which never performs the OIDC exchange; Node 24 (npm 11) fixed
+it on the same tag, and `publish.yml` now refuses to run below npm 11.5.
+`dsh-ustc-quota@1.1.16` is live with a provenance attestation
+(`/-/npm/v1/attestations/dsh-ustc-quota@1.1.16`).

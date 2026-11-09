@@ -81,3 +81,22 @@ https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v1.1.15.tar.gz
 - 首次发布（first publish）无法走 OIDC，已用一次性 token 完成；之后的版本全部由 tag 触发的 CI 发布。
 - 那次 token 在使用后应撤销。
 
+### OIDC 发布踩坑记录
+
+1. **npm 10 不会尝试 OIDC。** 首次 tag 发布在 `setup-node` 的 Node 22（npm 11 之前）上直接失败：
+
+   ```text
+   npm error code ENEEDAUTH
+   npm error need auth This command requires you to be logged in to https://registry.npmjs.org/
+   ```
+
+   这不是 Trusted Publisher 没配好，而是 npm 版本太旧、根本没发起 OIDC 交换。改成 Node 24（npm 11）后同样的 tag 一次通过，并生成 provenance attestation。`publish.yml` 现在带一个 npm ≥ 11.5 的前置检查，避免再以这种方式失败。
+2. **不要给 `setup-node` 配 `registry-url`。** 它会写入 `_authToken=${NODE_AUTH_TOKEN}`，空值会让 npm 退回 token 认证，同样得到 `ENEEDAUTH`。
+3. **Trusted Publisher 配置页显示 `Pending validation` 是正常的**，在一次成功发布后才会转为已验证；npm 会给一个约 24 小时的验证窗口。
+
+### 结果（2026-11-09）
+
+- `dsh-ustc-quota@1.1.15`：一次性 token 引导发布。
+- `dsh-ustc-quota@1.1.16`：tag `v1.1.16` 触发 `.github/workflows/publish.yml`，OIDC 发布成功，`latest=1.1.16`，带 provenance attesting。
+- 仓库与 profile 中均无 npm 凭据；之后每次发版只需 `git tag vX.Y.Z && git push origin vX.Y.Z`。
+
