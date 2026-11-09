@@ -1,0 +1,52 @@
+name: publish
+
+# Publishes to npm when a version tag is pushed: `git tag v1.1.16 && git push origin v1.1.16`.
+# Authentication is npm Trusted Publishing (OIDC): the package on npmjs.com trusts
+# this repository and this workflow file, so no npm token or secret is stored here.
+# setup-node is intentionally used WITHOUT `registry-url`: that option writes an
+# .npmrc containing `_authToken=${NODE_AUTH_TOKEN}`, and an unresolvable token line
+# makes npm attempt token auth instead of the OIDC exchange (ENEEDAUTH).
+#
+# Note: npm cannot publish a package's FIRST version through OIDC
+# (npm/cli#8544). The first publish must be bootstrapped with a token; every
+# release after that goes through this workflow.
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Lets npm verify this run's identity and mint a short-lived publish token.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Toolchain
+        run: |
+          node -v
+          npm -v
+          echo "registry=$(npm config get registry)"
+          echo "NODE_AUTH_TOKEN set: ${NODE_AUTH_TOKEN:+yes}"
+
+      - name: Verify the tag matches the manifest
+        run: |
+          tag="${GITHUB_REF#refs/tags/v}"
+          pkg="$(node -p "require('./package.json').version")"
+          echo "tag=$tag manifest=$pkg"
+          test "$tag" = "$pkg"
+
+      - name: Syntax and unit tests
+        run: |
+          for file in index.js client.js quota.js update.js; do node --check "$file"; done
+          node --test test/quota.test.js test/update.test.js
+
+      - name: Publish
+        run: npm publish --access public --provenance

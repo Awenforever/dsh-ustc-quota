@@ -1,0 +1,32 @@
+name: verify
+
+# Every push and pull request proves the plugin still parses and its tests still
+# pass. Publishing stays in publish.yml, so a red build can never reach npm.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax
+        run: |
+          for file in index.js client.js quota.js update.js; do node --check "$file"; done
+
+      - name: Unit tests
+        run: node --test test/quota.test.js test/update.test.js
+
+      - name: Pack contents
+        run: npm pack --dry-run
