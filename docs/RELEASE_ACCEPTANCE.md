@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.16 | 2026-11-09 |
+| Plugin | `dsh-ustc-quota` 1.1.17 | 2026-11-14 |
 | DSH desktop | 0.2.1-rc.3 and 0.2.2-rc.1 | 2026-11-09 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 37 `node:test` cases | 2026-11-09 |
@@ -49,7 +49,7 @@ clear “no USTC provider” state, never to invented numbers.
 |---|---|---|---|
 | D1 | Install and load | DSH starts; plugin appears after a normal restart | PASS |
 | D2 | Sidebar card | `USTC 词元额度` is present; sidebar proportions unchanged | PASS |
-| D3 | Version label | A small gray `v1.1.16` is visible beside the title | PASS |
+| D3 | Version label | A small gray `v1.1.17` is visible beside the title | PASS |
 | D4 | Startup check | On launch the update route is queried; no secret is sent | PASS |
 | D5 | Up-to-date state | No red dot when current == latest | PASS |
 | D6 | Newer version | Red dot appears when a newer release exists | PASS (test-only version copy) |
@@ -391,3 +391,33 @@ Node 22 (npm 10), which never performs the OIDC exchange; Node 24 (npm 11) fixed
 it on the same tag, and `publish.yml` now refuses to run below npm 11.5.
 `dsh-ustc-quota@1.1.16` is live with a provenance attestation
 (`/-/npm/v1/attestations/dsh-ustc-quota@1.1.16`).
+
+
+## 20. v1.1.17 — the restart banner no longer fires after a completed restart
+
+The banner that asks users to fully quit and reopen exists for carriers that keep
+serving the client bundle a page booted with. Until 1.1.16 the client decided it
+from a localStorage marker: any difference between the recorded version and the
+running client showed the banner, so the first launch *after* a successful
+in-app update asked for the restart the user had just performed, and a downgrade
+showed it as well.
+
+v1.1.17 decides from evidence instead: the banner appears only when the host
+reports an installed package version **newer** than the client module the page
+is running (`snapshot.pluginVersion > CLIENT_VERSION`). A fresh launch reports
+the same version on both sides and stays quiet; a page that genuinely kept stale
+code still gets the banner.
+
+Observed on 2026-11-14 before the fix:
+- TokenWorks 0.2.109 (dsh 0.2.1-rc.5, old carrier), 1.1.15 → 1.1.16 in-app
+  update: the dialog required a full restart; the launch after that restart ran
+  1.1.16 yet still showed "插件已更新，请完全退出并重开 DSH"; only a second
+  launch cleared it.
+- The same comparison also fired on an intentional downgrade.
+
+After the fix the banner is suppressed whenever host and page agree, which is
+what a real restart produces. The hot-update path (DSH 0.2.2-rc.1 and newer)
+never shows it, as before.
+
+`node --check` and the 37 node:test cases still pass; the change is client-only
+and does not alter the snapshot or update routes.

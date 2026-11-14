@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.16';
+    const CLIENT_VERSION = '1.1.17';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -41,7 +41,6 @@ window.__ModuleLoader__.load({
     let clientCtx = null;
     let activeSessionId = null;
     let holdHostReload = false;
-    let previousClientVersion = null;
     const activeSessionListeners = new Set();
 
     function setActiveSession(id) {
@@ -1014,9 +1013,7 @@ window.__ModuleLoader__.load({
       const [updateChecking, setUpdateChecking] = React.useState(false);
       const [updateApplying, setUpdateApplying] = React.useState(false);
       const [updateRestartPending, setUpdateRestartPending] = React.useState(false);
-      const [restartNotice, setRestartNotice] = React.useState(
-        () => !DSH_HOT_UPDATE && previousClientVersion !== null && previousClientVersion !== CLIENT_VERSION,
-      );
+      const [restartNotice, setRestartNotice] = React.useState(false);
       const [updateNotice, setUpdateNotice] = React.useState('');
       const [updateError, setUpdateError] = React.useState('');
       const [updateResult, setUpdateResult] = React.useState('');
@@ -1054,6 +1051,7 @@ window.__ModuleLoader__.load({
           if (!body || !Array.isArray(body.keys)) throw new Error('invalid snapshot');
           if (seq !== requestSeq.current || cancelledRef.current) return null;
           reloadForHostVersion(body.pluginVersion);
+          setRestartNotice(needsRestartForStaleClient(body));
           setSnapshot(body);
           setError(null);
           setLoading(false);
@@ -1702,6 +1700,17 @@ window.__ModuleLoader__.load({
       return false;
     }
 
+    // The restart banner is for carriers that keep serving the client bundle the
+    // page booted with: only a host package newer than the loaded client proves
+    // the page still runs stale code. A fresh launch carries the same version in
+    // both places, and a downgraded package is not newer, so neither asks for a
+    // restart that already happened.
+    function needsRestartForStaleClient(snapshot) {
+      if (DSH_HOT_UPDATE) return false;
+      const hostVersion = snapshot && typeof snapshot.pluginVersion === 'string' ? snapshot.pluginVersion : '';
+      return hostVersion ? isNewerVersion(hostVersion, CLIENT_VERSION) : false;
+    }
+
     function normalizeUpdateInfo(value) {
       if (!value || typeof value !== 'object' || typeof value.latestVersion !== 'string') return null;
       const latest = value.latestVersion.trim().replace(/^v/i, '');
@@ -1758,8 +1767,6 @@ window.__ModuleLoader__.load({
     function reloadOnceAfterClientUpdate() {
       if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
       try {
-        const storedVersion = localStorage.getItem(CLIENT_VERSION_KEY);
-        if (storedVersion && storedVersion !== CLIENT_VERSION) previousClientVersion = storedVersion;
         if (localStorage.getItem(CLIENT_VERSION_KEY) === CLIENT_VERSION) return;
         localStorage.setItem(CLIENT_VERSION_KEY, CLIENT_VERSION);
         if (typeof performance !== 'undefined' && performance.now() < 10000) return;

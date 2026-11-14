@@ -37,13 +37,13 @@ github:Awenforever/dsh-ustc-quota
 固定版本（推荐，避免默认分支后续变动）：
 
 ```text
-github:Awenforever/dsh-ustc-quota#v1.1.16
+github:Awenforever/dsh-ustc-quota#v1.1.17
 ```
 
 也可以直接从 npm 安装（这样 DSH 的插件页能用官方渠道检查新版本，并直接更新）：
 
 ```text
-dsh-ustc-quota@1.1.16
+dsh-ustc-quota@1.1.17
 ```
 
 或者用你已有的安装方式指定同一目录/仓库：
@@ -62,13 +62,13 @@ target = github:Awenforever/dsh-ustc-quota
 TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deepseek-ai/dsh-plugin-manager`：
 
 1. 在左侧栏打开 **插件** → 点右上角 **+ 添加插件**；
-2. 填入 `dsh-ustc-quota@1.1.16`（npm）或 `github:Awenforever/dsh-ustc-quota#v1.1.16`（GitHub）；
+2. 填入 `dsh-ustc-quota@1.1.17`（npm）或 `github:Awenforever/dsh-ustc-quota#v1.1.17`（GitHub）；
 3. **全新安装**后只需让插件页加载/刷新一次；**从旧版本升级**则必须完全退出并重新打开词元工坊。TokenWorks 的插件页「更新」只应用 Host bundle，页面刷新不能清掉 DSH client-module 缓存；若刷新后插件仍未恢复，请完全退出并重开词元工坊；
 4. 用学校统一身份登录后，卡片会自动出现。
 
 > 词元工坊插件页的「官方」只列出发行版自带的插件；第三方插件（包括本插件）不会出现在「官方」里，安装后会出现在「已安装」区域。这是正常的，不是没有装上。
 
-> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.16；v1.1.16 已包含旧包 `package.json` 的 BOM 修复、额度接口错误文案修正、报警图标出现时自动加宽 Key 列、更新器令牌/重试修复、DSH 0.2.2 热更新适配、分屏焦点跟随、深色主题适配，以及官方插件更新通道。安装/刷新后若仍未恢复，请完全退出并重开词元工坊，不要只凭一次页面刷新判断安装失败。
+> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.17；v1.1.17 已包含旧包 `package.json` 的 BOM 修复、额度接口错误文案修正、报警图标出现时自动加宽 Key 列、更新器令牌/重试修复、DSH 0.2.2 热更新适配、分屏焦点跟随、深色主题适配，以及官方插件更新通道。安装/刷新后若仍未恢复，请完全退出并重开词元工坊，不要只凭一次页面刷新判断安装失败。
 
 TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
@@ -84,7 +84,7 @@ TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
 卡片独占侧边栏底部的一整行：TokenWorks 的「更新」按钮或 DSH 的 Cordis 按钮留在上一行，不会被并排挤压；卡片内部的三列也不会被截断。
 
-> v1.1.6 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.16，并刷新一次页面让新的 client bundle 生效。
+> v1.1.6 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.17，并刷新一次页面让新的 client bundle 生效。
 
 每把 Key（TokenWorks 下是当前账户）一行，三列：
 
@@ -195,7 +195,8 @@ tokenworksUsage.snapshot({language})
 - 从 v1.1.15 起，分屏视图中的星号跟随当前焦点 pane：每个 `conversation.composer.dock` 注册隐藏 session marker，按 `focusin` / `pointerdown` 和 pane 的 `data-focused` 解析；共享 split 容器不会误切。`dsh-multiview` 0.1.4 已验证；其他分屏插件采用同一通用逻辑，best-effort。
 - 从 v1.1.15 起，深色主题完全跟随 DSH token：卡片、弹窗、边框、文字和状态色不写死浅色值，警告/重启底色用 `color-mix` 从 DSH state token 派生；不需要手动开关。
 - 从 v1.1.16 起，更新检查优先走 DSH 官方通道：先问宿主 `pluginManager.listVersions`（只对 npm 安装的副本有效），没结果再回退 GitHub Release；安装动作也优先用 `pluginManager.updateBundle`，宿主拒绝时回退到 release tarball 的 `installBundle`，两者都不可用时才显示可复制的安装 spec。插件版本已发布到 npm（`dsh-ustc-quota`），每个版本由 GitHub Actions 用 OIDC 可信发布自动上传。
-- **首次从 v1.1.11/v1.1.12 升级到 v1.1.13–v1.1.16 仍由旧更新器执行。** 如果自动更新失败，请在插件页直接安装 `github:Awenforever/dsh-ustc-quota#v1.1.16` 或 `dsh-ustc-quota@1.1.16`；装到新版后，后续自动更新才使用新的令牌/重试逻辑。
+- 从 v1.1.17 起，升级后的重启 banner 只在“宿主安装的版本比页面已加载的 client 版本更新”时出现：更新后第一次启动不会再误报“请完全退出并重开”（旧载体 0.2.1-rc.5 上尤其明显），降级时也不会误报。
+- **首次从 v1.1.11/v1.1.12 升级到 v1.1.13–v1.1.17 仍由旧更新器执行。** 如果自动更新失败，请在插件页直接安装 `github:Awenforever/dsh-ustc-quota#v1.1.17` 或 `dsh-ustc-quota@1.1.17`；装到新版后，后续自动更新才使用新的令牌/重试逻辑。
 - 24h 可能是用户级预算，同一用户多把 Key 会共享；24h 单元格会标注“密钥级 / 用户级 / 上次查询”。
 - 12:00 / 00:00 边界上平台可能短暂返回旧用量；插件把过期窗口标成“重置中”，8 秒后重查。
 - 额度数值是平台额度单位（当前 3h/12h/24h 为 30/70/100），不是 DSH token 数；插件不擅自换算。
