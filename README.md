@@ -32,7 +32,7 @@ github:Awenforever/dsh-ustc-quota
 ```
 
 > **升级前必读：DSH Desktop 0.2.1-rc.3–0.2.1-rc.5 的 client-modules 增量扫描缓存问题需要完整重启。** 在这些旧版本上从旧版本升级本插件后，必须完全退出并重新打开 DSH；仅刷新页面可能不够。若升级后启动崩溃，请使用 DSH 崩溃对话框里的 **重启** 或 **退出**。  
-> **DSH 0.2.2-rc.1 及以上已支持插件热更新。** v1.1.16 在这些版本上不再显示强制重启警告，更新后由 DSH 热重载；全新安装本来就不需要完整重启。
+> **DSH 0.2.2-rc.1 及以上已支持插件热更新。** 从 v1.1.17 起，只有“宿主已安装的包版本比页面正在运行的 client 版本更新”时才提示重启；更新成功后第一次启动不会再误报。全新安装本来就不需要完整重启。
 
 固定版本（推荐，避免默认分支后续变动）：
 
@@ -53,7 +53,7 @@ plugin_manager install_bundle
 target = github:Awenforever/dsh-ustc-quota
 ```
 
-安装完成后 Host、插件清单和 Client slot 会即时生效。**全新安装**不需要完全重启 DSH；如果页面提示刷新，刷新一次即可。**从旧版本升级**时，DSH Desktop 0.2.1-rc.3–0.2.1-rc.5 的 client-modules 增量扫描缓存问题要求完全退出并重新打开 DSH；页面刷新不够。**DSH 0.2.2-rc.1 及以上已支持插件热更新**，v1.1.16 会在这些版本上隐藏强制重启警告，由 DSH 热重载；只有热更新失败并返回 `restart-required` 时才提示完整重启。详见 [docs/RELEASE_ACCEPTANCE.md](docs/RELEASE_ACCEPTANCE.md) 的 carrier 限制。
+安装完成后 Host、插件清单和 Client slot 会即时生效。**全新安装**不需要完全重启 DSH；如果页面提示刷新，刷新一次即可。**从旧版本升级**时，DSH Desktop 0.2.1-rc.3–0.2.1-rc.5 的 client-modules 增量扫描缓存问题要求完全退出并重新打开 DSH；页面刷新不够。**DSH 0.2.2-rc.1 及以上已支持插件热更新**，v1.1.17 只在宿主包版本高于页面 client 版本时提示重启，由 DSH 热重载；只有热更新失败并返回 `restart-required` 时才提示完整重启。详见 [docs/RELEASE_ACCEPTANCE.md](docs/RELEASE_ACCEPTANCE.md) 的 carrier 限制。
 
 > **从 GitHub 仓库安装和从 npm 安装的区别：** 两者内容相同。从 npm 安装的副本能走 DSH 官方更新通道（插件页可直接检查并更新）；从 GitHub 安装的副本没有 registry 身份，卡片会自动退回 GitHub Release 检查更新，安装动作仍由 DSH 的插件管理器执行。
 

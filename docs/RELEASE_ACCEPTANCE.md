@@ -25,9 +25,9 @@ clear “no USTC provider” state, never to invented numbers.
 | Item | Value | As-of |
 |---|---|---|
 | Plugin | `dsh-ustc-quota` 1.1.17 | 2026-11-14 |
-| DSH desktop | 0.2.1-rc.3 and 0.2.2-rc.1 | 2026-11-09 |
+| DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
-| Unit tests | 37 `node:test` cases | 2026-11-09 |
+| Unit tests | 37 `node:test` cases | 2026-11-15 |
 | OS | Windows 11 10.0.26200 x64 | 2026-10-29 |
 
 ## 3. Preconditions
@@ -421,3 +421,18 @@ never shows it, as before.
 
 `node --check` and the 37 node:test cases still pass; the change is client-only
 and does not alter the snapshot or update routes.
+
+## 21. v1.1.17 closure on DSH 0.2.2-rc.3
+
+As-of 2026-11-15 the released v1.1.17 was re-verified on a registry-installed
+profile running DSH 0.2.2-rc.3 (Windows native):
+
+- snapshot route returns `pluginVersion` 1.1.17 with `warnings: []`;
+- update route returns `currentVersion = latestVersion = 1.1.17`, `updateAvailable: false`;
+- 37 unit tests pass (23 quota + 14 update);
+- the card shows `v1.1.17` and no restart banner after the host reload.
+
+When the installed version already equals the published one, the update route
+reports `source: "github"` because no newer registry version exists to prefer.
+That is expected: the registry path is preferred only when it offers a version
+at least as new as the GitHub release.
