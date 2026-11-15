@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.18';
+    const CLIENT_VERSION = '1.1.19';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -375,6 +375,15 @@ window.__ModuleLoader__.load({
         fontSize: 13,
         letterSpacing: '-0.01em',
         whiteSpace: 'nowrap',
+      },
+      brandMark: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 15,
+        height: 15,
+        flex: '0 0 15px',
+        color: 'var(--dsw-alias-label-primary)',
       },
       versionButton: {
         flex: '0 0 auto',
@@ -997,6 +1006,30 @@ window.__ModuleLoader__.load({
       return provider;
     }
 
+    function TokenWorksMark() {
+      // Redrawn from the TokenWorks brand mark (five rounded tiles forming a T),
+      // as a 24-viewBox monochrome line icon so it inherits currentColor.
+      const tile = (x, y) => h('rect', {
+        key: x + '-' + y,
+        x,
+        y,
+        width: 5.6,
+        height: 5.6,
+        rx: 1.25,
+        stroke: 'currentColor',
+        strokeWidth: 1.35,
+      });
+      return h('span', { style: STYLE.brandMark, 'aria-hidden': true, 'data-ustc-mark': '' },
+        h('svg', { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', style: { display: 'block' } },
+          tile(2.6, 3.2),
+          tile(9.2, 3.2),
+          tile(15.8, 3.2),
+          tile(9.2, 10.2),
+          tile(9.2, 17.2)
+        )
+      );
+    }
+
     function QuotaStrip(props) {
       const t = typeof props.t === 'function' ? props.t : fallbackT;
       const [snapshot, setSnapshot] = React.useState(null);
@@ -1512,7 +1545,8 @@ window.__ModuleLoader__.load({
           ? t('updateChecking')
           : t('versionCheck');
       const header = h('div', { style: STYLE.header },
-        h('span', { style: STYLE.title }, t('title')),
+        h(TokenWorksMark),
+        h('span', { style: STYLE.title, 'data-ustc-title': '' }, t('title')),
         h('button', {
           type: 'button',
           style: { ...STYLE.versionButton, opacity: updateChecking ? 0.6 : 1 },

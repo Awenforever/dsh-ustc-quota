@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.18 | 2026-11-15 |
+| Plugin | `dsh-ustc-quota` 1.1.19 | 2026-11-15 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -456,3 +456,25 @@ fails when both channels fail. Covered by three new tests (40 total):
 - registry answer + unreachable GitHub → `source: registry`, update offered;
 - broken `listVersions` + working GitHub → `source: github`, update offered;
 - both failing → the check still rejects, so the UI can show a real failure.
+
+## 23. v1.1.19 — TokenWorks mark in the card header
+
+The card title now carries the TokenWorks brand mark. The official asset on
+`ustc-wjh` (`D:\Programs\TokenWorks\resources\brand\icon.svg` and
+`icon-256.png`) is five rounded tiles forming a T. It is reproduced here as a
+24-viewBox monochrome stroke icon (15 px, `stroke="currentColor"`, 1.35 stroke,
+rounded tiles), because the card style is a single-color line icon and must
+follow the light/dark theme without hard-coded fills.
+
+Verification artifact: `scripts/shot-card.mjs` loads `client.js` with a React
+shim, captures the component registered on `sidebar.footer.action`, renders the
+first frame from a seeded snapshot, and screenshots it with headless Edge. It
+uses the component's real inline styles, not a hand-written copy.
+
+- `docs/screenshots/card-1.1.19.png`: light and dark cards side by side.
+- `docs/screenshots/card-1.1.19-header.png`: 3x header crop for baseline and
+  fixed-width inspection.
+
+Observed: the mark is present in both themes, is monochrome (black in light,
+white in dark), and the title starts at the same x-position regardless of the
+mark; the mark has a fixed 15 px box. `node --check` and the 40 unit tests pass.
