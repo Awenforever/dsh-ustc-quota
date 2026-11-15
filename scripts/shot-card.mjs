@@ -15,6 +15,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 const out = process.argv[2] ?? 'docs/screenshots/card.png';
+const shotScale = process.env.SHOT_SCALE || '2';
+const onlyTheme = process.env.SHOT_ONLY || '';
 const source = readFileSync('client.js', 'utf8').replace(/\r\n/g, '\n');
 
 const storage = () => {
@@ -139,7 +141,7 @@ const snapshot = {
   source: 'config',
   warnings: [],
   defaultProvider: 'ustc-lja',
-  pluginVersion: '1.1.18',
+  pluginVersion: '1.1.20',
   keys: [
     {
       provider: 'ustc-wmw',
@@ -283,10 +285,15 @@ const html = '<!doctype html><html><head><meta charset="utf-8"><title>ustc quota
   '.light{' + vars(light) + 'background:#ffffff;padding:12px;border-radius:12px;}' +
   '.dark{' + vars(dark) + 'background:#17171c;padding:12px;border-radius:12px;}' +
   '</style></head><body>' +
-  '<div class="row">' +
-    '<div class="col"><div class="cap">light</div><div class="light">' + card + '</div></div>' +
-    '<div class="col"><div class="cap">dark</div><div class="dark">' + card + '</div></div>' +
-  '</div></body></html>';
+  (onlyTheme === 'light'
+    ? '<div class="row"><div class="col"><div class="cap">light</div><div class="light">' + card + '</div></div></div>'
+    : onlyTheme === 'dark'
+      ? '<div class="row"><div class="col"><div class="cap">dark</div><div class="dark">' + card + '</div></div></div>'
+      : '<div class="row">' +
+        '<div class="col"><div class="cap">light</div><div class="light">' + card + '</div></div>' +
+        '<div class="col"><div class="cap">dark</div><div class="dark">' + card + '</div></div>' +
+        '</div>') +
+  '</body></html>';
 
 const zoom = 3;
 const headerHtml = '<!doctype html><html><head><meta charset="utf-8"><title>ustc quota header</title><style>' +
@@ -311,7 +318,7 @@ const shot = (url, file, size) => execFileSync(edge, [
   '--headless=new',
   '--disable-gpu',
   '--hide-scrollbars',
-  '--force-device-scale-factor=2',
+  '--force-device-scale-factor=' + shotScale,
   '--user-data-dir=' + join(dir, 'profile-' + Math.random().toString(36).slice(2)),
   '--window-size=' + size,
   '--screenshot=' + join(process.cwd(), file),
@@ -324,6 +331,6 @@ const dom = execFileSync(edge, [
 ], { encoding: 'utf8' });
 const measured = /<title>(.*?)<\/title>/s.exec(dom);
 if (measured) console.log('metrics ' + measured[1]);
-shot(page, out, '760,470');
+shot(page, out, onlyTheme ? '420,470' : '760,470');
 shot(headerPage, headerOut, '1040,140');
 console.log('wrote ' + out + ' and ' + headerOut + ' (component DOM, real inline styles)');

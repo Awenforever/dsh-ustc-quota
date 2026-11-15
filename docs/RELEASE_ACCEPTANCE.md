@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.19 | 2026-11-15 |
+| Plugin | `dsh-ustc-quota` 1.1.20 | 2026-11-15 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -471,10 +471,28 @@ shim, captures the component registered on `sidebar.footer.action`, renders the
 first frame from a seeded snapshot, and screenshots it with headless Edge. It
 uses the component's real inline styles, not a hand-written copy.
 
-- `docs/screenshots/card-1.1.19.png`: light and dark cards side by side.
-- `docs/screenshots/card-1.1.19-header.png`: 3x header crop for baseline and
-  fixed-width inspection.
+The 1.1.19 artifacts were superseded by the v1.1.20 ones below: the icon was
+resized to match the Memory card in 1.1.20, so keeping the older renders would
+show a size that no longer ships.
 
 Observed: the mark is present in both themes, is monochrome (black in light,
 white in dark), and the title starts at the same x-position regardless of the
 mark; the mark has a fixed 15 px box. `node --check` and the 40 unit tests pass.
+
+## 24. v1.1.20 — icon size aligned with the Memory card
+
+The v1.1.19 mark was 15 px; the Memory card's mark is 13 px. v1.1.20 matches
+the measured Memory specification: 13 px square, 24 viewBox, fill none,
+`stroke="currentColor"`, `strokeWidth 1.6`, and a `flex: 0 0 13px` container
+so the title starts at the same x-position.
+
+The five-tile TokenWorks silhouette is kept, with slightly wider gaps so the
+tiles stay separable at 13 px. Verification uses the real component DOM:
+
+- `docs/screenshots/compare-13px.png`: this card and a Memory card at 1 CSS px =
+  1 image px, side by side; both marks are 13 px.
+- `docs/screenshots/card-1.1.20.png`: light and dark cards at 1x.
+
+Observed: both marks are the same 13 px box; this mark is monochrome (black in
+light, white in dark); the title left edge is stable; the header metrics put the
+mark and title on the same center line. 40 unit tests pass.

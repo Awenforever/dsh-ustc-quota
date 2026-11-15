@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.19';
+    const CLIENT_VERSION = '1.1.20';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -380,9 +380,9 @@ window.__ModuleLoader__.load({
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 15,
-        height: 15,
-        flex: '0 0 15px',
+        width: 13,
+        height: 13,
+        flex: '0 0 13px',
         color: 'var(--dsw-alias-label-primary)',
       },
       versionButton: {
@@ -1013,19 +1013,19 @@ window.__ModuleLoader__.load({
         key: x + '-' + y,
         x,
         y,
-        width: 5.6,
-        height: 5.6,
-        rx: 1.25,
+        width: 5.5,
+        height: 5.5,
+        rx: 1.2,
         stroke: 'currentColor',
-        strokeWidth: 1.35,
+        strokeWidth: 1.6,
       });
       return h('span', { style: STYLE.brandMark, 'aria-hidden': true, 'data-ustc-mark': '' },
-        h('svg', { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', style: { display: 'block' } },
-          tile(2.6, 3.2),
-          tile(9.2, 3.2),
-          tile(15.8, 3.2),
-          tile(9.2, 10.2),
-          tile(9.2, 17.2)
+        h('svg', { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', style: { display: 'block' } },
+          tile(2.25, 3.5),
+          tile(9.25, 3.5),
+          tile(16.25, 3.5),
+          tile(9.25, 10.5),
+          tile(9.25, 17.5)
         )
       );
     }
