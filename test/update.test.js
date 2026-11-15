@@ -325,3 +325,54 @@ test('UpdateService keeps the release feed when GitHub is ahead of the registry'
   assert.equal(info.spec, 'https://github.com/Awenforever/dsh-ustc-quota/archive/refs/tags/v1.1.17.tar.gz');
 });
 
+test('registry discovery survives an unreachable GitHub release feed', async () => {
+  const svc = new UpdateService(
+    ctxWith({
+      pluginManager: {
+        async listVersions() {
+          return { status: 'listed', installed: '1.1.17', versions: [{ version: '1.1.18' }], registry: 'https://registry.npmjs.org/' };
+        },
+      },
+    }),
+    {
+      currentVersion: '1.1.17',
+      fetchImpl: async () => {
+        throw new Error('github-unreachable');
+      },
+      timeoutMs: 100,
+    },
+  );
+  const info = await svc.check(true);
+  assert.equal(info.ok, true);
+  assert.equal(info.source, 'registry');
+  assert.equal(info.latestVersion, '1.1.18');
+  assert.equal(info.updateAvailable, true);
+  assert.equal(info.spec, registrySpecForVersion('1.1.18'));
+});
+
+test('a registry failure alone does not break the GitHub fallback', async () => {
+  const svc = new UpdateService(
+    ctxWith({
+      pluginManager: {
+        async listVersions() {
+          throw new Error('listVersions-broken');
+        },
+      },
+    }),
+    { currentVersion: '1.1.0', fetchImpl: fetchWith(release('1.1.2')), timeoutMs: 100 },
+  );
+  const info = await svc.check(true);
+  assert.equal(info.source, 'github');
+  assert.equal(info.latestVersion, '1.1.2');
+});
+
+test('both discovery paths failing still surfaces an error', async () => {
+  const svc = new UpdateService(ctxWith({}), {
+    currentVersion: '1.1.0',
+    fetchImpl: async () => {
+      throw new Error('github-unreachable');
+    },
+    timeoutMs: 100,
+  });
+  await assert.rejects(() => svc.check(true), /github-unreachable/);
+});

@@ -37,13 +37,13 @@ github:Awenforever/dsh-ustc-quota
 固定版本（推荐，避免默认分支后续变动）：
 
 ```text
-github:Awenforever/dsh-ustc-quota#v1.1.17
+github:Awenforever/dsh-ustc-quota#v1.1.18
 ```
 
 也可以直接从 npm 安装（这样 DSH 的插件页能用官方渠道检查新版本，并直接更新）：
 
 ```text
-dsh-ustc-quota@1.1.17
+dsh-ustc-quota@1.1.18
 ```
 
 或者用你已有的安装方式指定同一目录/仓库：
@@ -53,7 +53,7 @@ plugin_manager install_bundle
 target = github:Awenforever/dsh-ustc-quota
 ```
 
-安装完成后 Host、插件清单和 Client slot 会即时生效。**全新安装**不需要完全重启 DSH；如果页面提示刷新，刷新一次即可。**从旧版本升级**时，DSH Desktop 0.2.1-rc.3–0.2.1-rc.5 的 client-modules 增量扫描缓存问题要求完全退出并重新打开 DSH；页面刷新不够。**DSH 0.2.2-rc.1 及以上已支持插件热更新**，v1.1.17 只在宿主包版本高于页面 client 版本时提示重启，由 DSH 热重载；只有热更新失败并返回 `restart-required` 时才提示完整重启。详见 [docs/RELEASE_ACCEPTANCE.md](docs/RELEASE_ACCEPTANCE.md) 的 carrier 限制。
+安装完成后 Host、插件清单和 Client slot 会即时生效。**全新安装**不需要完全重启 DSH；如果页面提示刷新，刷新一次即可。**从旧版本升级**时，DSH Desktop 0.2.1-rc.3–0.2.1-rc.5 的 client-modules 增量扫描缓存问题要求完全退出并重新打开 DSH；页面刷新不够。**DSH 0.2.2-rc.1 及以上已支持插件热更新**，v1.1.18 只在宿主包版本高于页面 client 版本时提示重启，由 DSH 热重载；只有热更新失败并返回 `restart-required` 时才提示完整重启。详见 [docs/RELEASE_ACCEPTANCE.md](docs/RELEASE_ACCEPTANCE.md) 的 carrier 限制。
 
 > **从 GitHub 仓库安装和从 npm 安装的区别：** 两者内容相同。从 npm 安装的副本能走 DSH 官方更新通道（插件页可直接检查并更新）；从 GitHub 安装的副本没有 registry 身份，卡片会自动退回 GitHub Release 检查更新，安装动作仍由 DSH 的插件管理器执行。
 
@@ -62,13 +62,13 @@ target = github:Awenforever/dsh-ustc-quota
 TokenWorks 是 USTC 基于 DSH 的发行版，自带 **插件** 页面和 `@deepseek-ai/dsh-plugin-manager`：
 
 1. 在左侧栏打开 **插件** → 点右上角 **+ 添加插件**；
-2. 填入 `dsh-ustc-quota@1.1.17`（npm）或 `github:Awenforever/dsh-ustc-quota#v1.1.17`（GitHub）；
+2. 填入 `dsh-ustc-quota@1.1.18`（npm）或 `github:Awenforever/dsh-ustc-quota#v1.1.18`（GitHub）；
 3. **全新安装**后只需让插件页加载/刷新一次；**从旧版本升级**则必须完全退出并重新打开词元工坊。TokenWorks 的插件页「更新」只应用 Host bundle，页面刷新不能清掉 DSH client-module 缓存；若刷新后插件仍未恢复，请完全退出并重开词元工坊；
 4. 用学校统一身份登录后，卡片会自动出现。
 
 > 词元工坊插件页的「官方」只列出发行版自带的插件；第三方插件（包括本插件）不会出现在「官方」里，安装后会出现在「已安装」区域。这是正常的，不是没有装上。
 
-> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.17；v1.1.17 已包含旧包 `package.json` 的 BOM 修复、额度接口错误文案修正、报警图标出现时自动加宽 Key 列、更新器令牌/重试修复、DSH 0.2.2 热更新适配、分屏焦点跟随、深色主题适配，以及官方插件更新通道。安装/刷新后若仍未恢复，请完全退出并重开词元工坊，不要只凭一次页面刷新判断安装失败。
+> 如果之前装过旧版本并看到「插件异常」，先在插件页移除旧条目，再安装上面的 v1.1.18；v1.1.18 已包含旧包 `package.json` 的 BOM 修复、额度接口错误文案修正、报警图标出现时自动加宽 Key 列、更新器令牌/重试修复、DSH 0.2.2 热更新适配、分屏焦点跟随、深色主题适配，以及官方插件更新通道。安装/刷新后若仍未恢复，请完全退出并重开词元工坊，不要只凭一次页面刷新判断安装失败。
 
 TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
@@ -84,7 +84,7 @@ TokenWorks 的额度来自它内置的 `tokenworksUsage` 服务，因此：
 
 卡片独占侧边栏底部的一整行：TokenWorks 的「更新」按钮或 DSH 的 Cordis 按钮留在上一行，不会被并排挤压；卡片内部的三列也不会被截断。
 
-> v1.1.6 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.17，并刷新一次页面让新的 client bundle 生效。
+> v1.1.6 起不再依赖 `<style>`/`:has`：客户端挂载后直接找到 `footerActions`，折叠只包含本卡片的 slot cell，并让 footer 换行。若仍看到并排，确认装的是 v1.1.18，并刷新一次页面让新的 client bundle 生效。
 
 每把 Key（TokenWorks 下是当前账户）一行，三列：
 
@@ -108,7 +108,7 @@ key-c   8.7/30   29%       8.7/70   12%        11.1/100  11%
 ## 更新
 
 - 标题「USTC 词元额度」右侧显示灰色小字版本号；点击版本号可手动检查更新；
-- 启动时检查一次，之后每 24 小时自动检查一次 GitHub 最新 release；
+- 启动时检查一次，之后每 24 小时自动检查一次；先问宿主 `pluginManager.listVersions`（npm 安装的副本可用），再读 GitHub 最新 release 作为回退——**两条通道任意一条可用就能给出结果**；
 - 有新版本时版本号旁出现小红点，点击弹出更新确认弹窗；
 - 当前 DSH 通过宿主的官方 `pluginManager` 更新路由直接安装最新 release 的 tarball；从 v1.1.6 起，安装成功后**不自动重载**，弹窗会明确要求完全退出并重新打开 DSH；如果载体仍自动刷新了页面，新 client 会在卡片上显示同样的重启提示，以避免 DSH carrier 的 client-module 启动缓存（rc.3/rc.5）；
 - 已预留 `pluginUpdates.applyUpdate({ id, spec, version })` 适配接口，供后续 DSH 官方插件更新预览版接入；接口不可用时回退到 `pluginManager`，再不可用则弹窗显示安装 spec；
@@ -196,7 +196,8 @@ tokenworksUsage.snapshot({language})
 - 从 v1.1.15 起，深色主题完全跟随 DSH token：卡片、弹窗、边框、文字和状态色不写死浅色值，警告/重启底色用 `color-mix` 从 DSH state token 派生；不需要手动开关。
 - 从 v1.1.16 起，更新检查优先走 DSH 官方通道：先问宿主 `pluginManager.listVersions`（只对 npm 安装的副本有效），没结果再回退 GitHub Release；安装动作也优先用 `pluginManager.updateBundle`，宿主拒绝时回退到 release tarball 的 `installBundle`，两者都不可用时才显示可复制的安装 spec。插件版本已发布到 npm（`dsh-ustc-quota`），每个版本由 GitHub Actions 用 OIDC 可信发布自动上传。
 - 从 v1.1.17 起，升级后的重启 banner 只在“宿主安装的版本比页面已加载的 client 版本更新”时出现：更新后第一次启动不会再误报“请完全退出并重开”（旧载体 0.2.1-rc.5 上尤其明显），降级时也不会误报。
-- **首次从 v1.1.11/v1.1.12 升级到 v1.1.13–v1.1.17 仍由旧更新器执行。** 如果自动更新失败，请在插件页直接安装 `github:Awenforever/dsh-ustc-quota#v1.1.17` 或 `dsh-ustc-quota@1.1.17`；装到新版后，后续自动更新才使用新的令牌/重试逻辑。
+- 从 v1.1.18 起，更新检查改为 registry 优先、GitHub 回退：GitHub 不可达（或被防火墙阻断）时不再整体失败，只要 `listVersions` 能给出更新就照常提示；两条通道都不可用才报检查失败。
+- **首次从 v1.1.11/v1.1.12 升级到 v1.1.13–v1.1.18 仍由旧更新器执行。** 如果自动更新失败，请在插件页直接安装 `github:Awenforever/dsh-ustc-quota#v1.1.18` 或 `dsh-ustc-quota@1.1.18`；装到新版后，后续自动更新才使用新的令牌/重试逻辑。
 - 24h 可能是用户级预算，同一用户多把 Key 会共享；24h 单元格会标注“密钥级 / 用户级 / 上次查询”。
 - 12:00 / 00:00 边界上平台可能短暂返回旧用量；插件把过期窗口标成“重置中”，8 秒后重查。
 - 额度数值是平台额度单位（当前 3h/12h/24h 为 30/70/100），不是 DSH token 数；插件不擅自换算。

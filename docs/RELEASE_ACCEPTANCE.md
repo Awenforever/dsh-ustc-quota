@@ -24,10 +24,10 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.17 | 2026-11-14 |
+| Plugin | `dsh-ustc-quota` 1.1.18 | 2026-11-15 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
-| Unit tests | 37 `node:test` cases | 2026-11-15 |
+| Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
 | OS | Windows 11 10.0.26200 x64 | 2026-10-29 |
 
 ## 3. Preconditions
@@ -436,3 +436,23 @@ When the installed version already equals the published one, the update route
 reports `source: "github"` because no newer registry version exists to prefer.
 That is expected: the registry path is preferred only when it offers a version
 at least as new as the GitHub release.
+
+## 22. v1.1.18 — update discovery no longer depends on GitHub reachability
+
+v1.1.17 asked GitHub for the latest release *before* asking the carrier for
+registry versions, and did not catch the failure. On a network that can reach
+npm but not GitHub, the whole update check threw, so a registry-installed copy
+never learned about a newer version.
+
+Reproduced before the fix with the released code:
+
+    new UpdateService({ listVersions → 1.1.18 }, { fetchImpl: throws }).check(true)
+    → rejected: github-unreachable        # the registry answer was discarded
+
+v1.1.18 reorders discovery: `listVersions` runs first, the release feed is a
+fallback, and a GitHub failure is captured instead of aborting. The check only
+fails when both channels fail. Covered by three new tests (40 total):
+
+- registry answer + unreachable GitHub → `source: registry`, update offered;
+- broken `listVersions` + working GitHub → `source: github`, update offered;
+- both failing → the check still rejects, so the UI can show a real failure.

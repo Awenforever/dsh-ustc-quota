@@ -363,17 +363,28 @@ export class UpdateService {
     if (this.inFlight) return this.inFlight;
 
     const promise = (async () => {
-      const release = await fetchLatestRelease(this.fetchImpl, {
-        repository: this.repository,
-        timeoutMs: this.timeoutMs,
-      });
-
-      // Official discovery first, release feed second. `listVersions` only
-      // answers for a registry-installed dependency; anything else keeps the
-      // GitHub release as the source of truth.
+      // Registry first: `listVersions` answers locally through the carrier and
+      // works on networks that cannot reach GitHub. The release feed is only a
+      // fallback, so a GitHub failure must not discard a registry answer.
       const registryHit = await discoverRegistryUpdate(this.ctx, this.currentVersion);
+
+      let release = null;
+      let releaseError = null;
+      try {
+        release = await fetchLatestRelease(this.fetchImpl, {
+          repository: this.repository,
+          timeoutMs: this.timeoutMs,
+        });
+      } catch (error) {
+        releaseError = error;
+      }
+
+      if (!release && !registryHit) {
+        throw releaseError || new Error('no-update-source');
+      }
+
       const preferRegistry = Boolean(registryHit)
-        && compareVersions(registryHit.version, release.version) >= 0;
+        && (!release || compareVersions(registryHit.version, release.version) >= 0);
 
       const latestVersion = preferRegistry ? registryHit.version : release.version;
       const updateAvailable = isUpdateAvailable(this.currentVersion, latestVersion);
@@ -388,10 +399,10 @@ export class UpdateService {
         registry: preferRegistry ? registryHit.registry : null,
         releaseUrl: preferRegistry
           ? releaseUrlForVersion(latestVersion)
-          : (release.htmlUrl || releaseUrlForVersion(release.version)),
-        releaseName: preferRegistry ? `${PLUGIN_ID} ${latestVersion}` : release.name,
-        releaseNotes: preferRegistry ? '' : release.notes.slice(0, 4000),
-        publishedAt: preferRegistry ? null : release.publishedAt,
+          : (release && release.htmlUrl) || releaseUrlForVersion(latestVersion),
+        releaseName: preferRegistry ? `${PLUGIN_ID} ${latestVersion}` : (release ? release.name : `${PLUGIN_ID} ${latestVersion}`),
+        releaseNotes: preferRegistry || !release ? '' : release.notes.slice(0, 4000),
+        publishedAt: preferRegistry || !release ? null : release.publishedAt,
         checkedAt: new Date(now).toISOString(),
       };
       this.cached = info;
