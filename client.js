@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.34';
+    const CLIENT_VERSION = '1.1.37';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1141,76 +1141,44 @@ window.__ModuleLoader__.load({
     const DOCK_TRANSCRIPT_FLOOR = 360;
 
 
-    // Reserved right strip: applied from the measure loop so a DSH re-render of the
-    // column cannot drop it, and restored whenever the dock leaves the right seat.
-    let reservedColumn = null;
-    let reservedSaved = null;
-    let reservedSavedPriority = '';
-
-    function applyReservedPadding(reserve) {
-      const holder = document.querySelector('[data-slot="main.conversation"]');
-      const column = holder ? (holder.firstElementChild || holder) : null;
-      if (!column) return false;
-      if (reservedColumn !== column) {
-        releaseReservedPadding();
-        reservedColumn = column;
-        reservedSaved = column.style.getPropertyValue('padding-right');
-        reservedSavedPriority = column.style.getPropertyPriority('padding-right');
-      }
-      const wanted = reserve + 'px';
-      if (column.style.getPropertyValue('padding-right') !== wanted) {
-        column.style.setProperty('padding-right', wanted, 'important');
-      }
-      return true;
-    }
-
-    function releaseReservedPadding() {
-      if (!reservedColumn) return;
-      if (reservedSaved) reservedColumn.style.setProperty('padding-right', reservedSaved, reservedSavedPriority);
-      else reservedColumn.style.removeProperty('padding-right');
-      reservedColumn = null;
-      reservedSaved = null;
-      reservedSavedPriority = '';
-    }
-
     function measureRightDock() {
       const holder = document.querySelector('[data-slot="main.conversation"]');
       const column = holder ? (holder.firstElementChild || holder) : null;
       if (!column) return null;
       const columnRect = column.getBoundingClientRect();
-      if (columnRect.width < 220 || columnRect.height < 160) return null;
+      if (columnRect.width < 200 || columnRect.height < 120) return null;
 
-      // Reserve a strip on the right of the conversation box instead of overlapping
-      // it: DSH centres the transcript and the turn rail inside the padding box, so
-      // padding-right slides both of them left and the dock owns the strip.
-      const columnWidth = Math.round(columnRect.width);
-      let width = Math.round(columnWidth * 0.26);
-      width = Math.min(DOCK_MAX_WIDTH, Math.max(DOCK_MIN_WIDTH, width));
-      if (columnWidth - (width + DOCK_GAP * 2) < DOCK_TRANSCRIPT_FLOOR) {
-        width = Math.max(DOCK_FLOOR_WIDTH, columnWidth - DOCK_TRANSCRIPT_FLOOR - DOCK_GAP * 2);
+      // Left bound: the conversation boundary the user drags. DSH draws two
+      // .widthHandle strips beside the transcript; the card starts to their right,
+      // so it never covers the transcript and never touches the boundary.
+      let boundaryRight = null;
+      for (const handle of document.querySelectorAll('[class*="widthHandle"]')) {
+        if (handle.getAttribute('data-side') === 'left') continue;
+        const rect = handle.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height < 40) continue;
+        boundaryRight = boundaryRight === null ? rect.right : Math.max(boundaryRight, rect.right);
       }
-      // A collapsed right sidebar keeps a narrow icon rail at the column's right
-      // edge. Only a small inset counts as that rail: a wide one means the sidebar is
-      // open and the dock must not try to dodge a whole panel.
-      let railInset = 0;
+      if (boundaryRight === null) boundaryRight = columnRect.left + columnRect.width * 0.5 + 24;
+
+      // Right bound: whatever native chrome lives at the column's right edge — the
+      // turn rail when there are turns, otherwise the right-sidebar rail button.
+      let rightLimit = columnRect.right;
       for (const button of document.querySelectorAll('button[aria-label]')) {
         const label = button.getAttribute('aria-label') || '';
-        if (!/右侧边栏/.test(label)) continue;
+        if (!/turnNavigation|轮次|跳转|右侧边栏/i.test(label)) continue;
         const rect = button.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) continue;
-        if (rect.left < columnRect.left || rect.left > columnRect.right) continue;
-        const inset = Math.round(columnRect.right - rect.left);
-        if (inset > 0 && inset <= 72) railInset = Math.max(railInset, inset);
+        if (rect.left <= boundaryRight) continue;
+        if (rect.left < rightLimit) rightLimit = rect.left;
       }
-      width = Math.max(DOCK_FLOOR_WIDTH, width - railInset);
-      let reserve = width + railInset + DOCK_GAP * 2;
-      const reserveCap = Math.round(columnRect.width * 0.34);
-      if (reserve > reserveCap) {
-        reserve = Math.max(DOCK_FLOOR_WIDTH + DOCK_GAP * 2, reserveCap);
-        width = Math.max(DOCK_FLOOR_WIDTH, reserve - railInset - DOCK_GAP * 2);
-      }
+      if (rightLimit > columnRect.right) rightLimit = columnRect.right;
 
-      // Vertical bound: never cross or touch the separator under the tab strip.
+      const leftEdge = Math.round(boundaryRight) + DOCK_GAP;
+      const rightEdge = Math.round(rightLimit) - DOCK_GAP;
+      const span = rightEdge - leftEdge;
+      if (span < 40) return null;
+
+      // Vertical bound: below the conversation tab strip, above the column bottom.
       let contentTop = Math.round(columnRect.top) + DOCK_GAP;
       const tabStrip = document.querySelector('[data-conversation-tabs]');
       if (tabStrip) {
@@ -1223,9 +1191,9 @@ window.__ModuleLoader__.load({
 
       return {
         top: contentTop,
-        width,
-        reserve,
-        railInset,
+        left: leftEdge,
+        width: Math.max(span, 160),
+        columnWidth: Math.round(columnRect.width),
         maxHeight: Math.max(120, Math.round(columnRect.bottom) - contentTop - DOCK_GAP),
       };
     }
@@ -1250,12 +1218,7 @@ window.__ModuleLoader__.load({
             observer = new ResizeObserver(schedule);
             observer.observe(column);
           }
-          const next = measureRightDock();
-          setBox(next);
-          // Apply the reserved padding from the same loop that measured it; a React
-          // effect can be skipped when DSH re-renders the column behind our back.
-          if (activeRef.current && next) applyReservedPadding(next.reserve);
-          else releaseReservedPadding();
+          setBox(measureRightDock());
         };
         function schedule() {
           if (!frame) frame = window.requestAnimationFrame(measure);
@@ -1270,10 +1233,6 @@ window.__ModuleLoader__.load({
           if (frame) window.cancelAnimationFrame(frame);
         };
       }, []);
-      React.useEffect(() => () => { releaseReservedPadding(); }, []);
-      React.useEffect(() => {
-        if (!active) releaseReservedPadding();
-      }, [active]);
 
       const shown = active && box !== null;
       return h('div', {
@@ -1281,7 +1240,7 @@ window.__ModuleLoader__.load({
         style: {
           position: 'fixed',
           top: box ? box.top : 0,
-          right: DOCK_GAP + (box ? box.railInset : 0),
+          left: box ? box.left : 0,
           width: box ? box.width : DOCK_MIN_WIDTH,
           maxHeight: box ? box.maxHeight : 0,
           overflow: 'visible',

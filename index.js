@@ -22,7 +22,7 @@ const ROUTE_PATH = '/plugins/dsh-ustc-quota/snapshot';
 const UPDATE_PATH = '/plugins/dsh-ustc-quota/update';
 const UPDATE_APPLY_PATH = '/plugins/dsh-ustc-quota/update/apply';
 const UPDATE_TOKEN_TTL_MS = 30 * 60 * 1000;
-const PLUGIN_VERSION = '1.1.34';
+const PLUGIN_VERSION = '1.1.37';
 const KEY_INFO_PATH = 'key/info';
 const USER_INFO_PATH = 'user/info';
 const DISCOVERY_TTL_MS = 30000;
@@ -57,28 +57,7 @@ export function apply(ctx, config) {
     path: UPDATE_APPLY_PATH,
     handler: (request, response) => handleUpdateApply(ctx, updates, updateTokens, request, response),
   }), 'dsh-ustc-quota: update apply route');
-
-  // TEMPORARY probe (removed in the next build).
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: '/plugins/dsh-ustc-quota/probe',
-    handler: (request, response) => {
-      const out = {};
-      try {
-        const conn = ctx.connection || {};
-        out.connectionKeys = Object.keys(conn);
-        for (const key of out.connectionKeys) {
-          const value = conn[key];
-          if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') out[key] = value;
-        }
-        out.ctxKeys = Object.keys(ctx);
-      } catch (error) {
-        out.error = String(error);
-      }
-      response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      response.end(JSON.stringify(out));
-    },
-  }), 'dsh-ustc-quota: probe route');}
+}
 
 function createReader(ctx, settings) {
   const cache = new Map();
