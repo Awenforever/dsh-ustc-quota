@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.25';
+    const CLIENT_VERSION = '1.1.26';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1135,43 +1135,28 @@ window.__ModuleLoader__.load({
     // between the chat content and the turn navigator, so it follows the
     // conversation when either side is dragged or toggled.
     const DOCK_GAP = 6;
-    const DOCK_MIN_WIDTH = 180;
-    const DOCK_MAX_WIDTH = 480;
+    const DOCK_MIN_WIDTH = 200;
+    const DOCK_MAX_WIDTH = 340;
+    const DOCK_FLOOR_WIDTH = 140;
+    const DOCK_TRANSCRIPT_FLOOR = 360;
 
     function measureRightDock() {
       const holder = document.querySelector('[data-slot="main.conversation"]');
       const column = holder ? (holder.firstElementChild || holder) : null;
       if (!column) return null;
       const columnRect = column.getBoundingClientRect();
-      if (columnRect.width < 240 || columnRect.height < 160) return null;
+      if (columnRect.width < 220 || columnRect.height < 160) return null;
 
-      // DSH draws two col-resize strips either side of the transcript
-      // (.widthHandle, data-side=left|right). The right one IS the conversation
-      // boundary the user drags, and its left edge is content + 24px.
-      let boundaryRight = null;
-      const handles = document.querySelectorAll('[class*="widthHandle"]');
-      for (const handle of handles) {
-        if (handle.getAttribute('data-side') === 'left') continue;
-        const rect = handle.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height < 40) continue;
-        const edge = rect.right;
-        if (boundaryRight === null || edge > boundaryRight) boundaryRight = edge;
+      // Reserve a strip on the right of the conversation box instead of overlapping
+      // it: DSH centres the transcript and the turn rail inside the padding box, so
+      // padding-right slides both of them left and the dock owns the strip.
+      const columnWidth = Math.round(columnRect.width);
+      let width = Math.round(columnWidth * 0.26);
+      width = Math.min(DOCK_MAX_WIDTH, Math.max(DOCK_MIN_WIDTH, width));
+      if (columnWidth - (width + DOCK_GAP * 2) < DOCK_TRANSCRIPT_FLOOR) {
+        width = Math.max(DOCK_FLOOR_WIDTH, columnWidth - DOCK_TRANSCRIPT_FLOOR - DOCK_GAP * 2);
       }
-      if (boundaryRight === null) boundaryRight = columnRect.left + columnRect.width * 0.5 + 24;
-
-      // Turn navigator rail: per-turn buttons stacked at the column's right edge.
-      let navLeft = null;
-      for (const button of document.querySelectorAll('button[aria-label]')) {
-        const label = button.getAttribute('aria-label') || '';
-        if (!/turnNavigation|轮次|跳转/i.test(label)) continue;
-        const rect = button.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) navLeft = navLeft === null ? rect.left : Math.min(navLeft, rect.left);
-      }
-      if (navLeft === null) navLeft = columnRect.right - 26;
-
-      const leftEdge = Math.round(boundaryRight) + DOCK_GAP;
-      const rightEdge = Math.round(navLeft) - DOCK_GAP;
-      if (rightEdge - leftEdge < DOCK_MIN_WIDTH) return null;
+      const reserve = width + DOCK_GAP * 2;
 
       // Vertical bound: never cross or touch the separator under the tab strip.
       let contentTop = Math.round(columnRect.top) + DOCK_GAP;
@@ -1186,8 +1171,8 @@ window.__ModuleLoader__.load({
 
       return {
         top: contentTop,
-        right: Math.round(window.innerWidth - rightEdge),
-        width: Math.min(DOCK_MAX_WIDTH, rightEdge - leftEdge),
+        width,
+        reserve,
         maxHeight: Math.max(120, Math.round(columnRect.bottom) - contentTop - DOCK_GAP),
       };
     }
@@ -1225,14 +1210,28 @@ window.__ModuleLoader__.load({
           if (frame) window.cancelAnimationFrame(frame);
         };
       }, []);
+      const reserve = box ? box.reserve : 0;
+      React.useEffect(() => {
+        if (!active || !reserve) return undefined;
+        const holder = document.querySelector('[data-slot="main.conversation"]');
+        const column = holder ? (holder.firstElementChild || holder) : null;
+        if (!column) return undefined;
+        const saved = column.style.getPropertyValue('padding-right');
+        const priority = column.style.getPropertyPriority('padding-right');
+        column.style.setProperty('padding-right', reserve + 'px', 'important');
+        return () => {
+          if (saved) column.style.setProperty('padding-right', saved, priority);
+          else column.style.removeProperty('padding-right');
+        };
+      }, [active, reserve]);
       const shown = active && box !== null;
       return h('div', {
         'data-ustc-quota-dock': 'right',
         style: {
           position: 'fixed',
           top: box ? box.top : 0,
-          right: box ? box.right : 0,
-          width: box ? box.width : DOCK_MAX_WIDTH,
+          right: DOCK_GAP,
+          width: box ? box.width : DOCK_MIN_WIDTH,
           maxHeight: box ? box.maxHeight : 0,
           overflow: 'visible',
           display: shown ? 'flex' : 'none',
@@ -1243,7 +1242,6 @@ window.__ModuleLoader__.load({
         },
       }, h(QuotaStrip, Object.assign({}, props, { placement: 'right', wide: true, active, visible: active })));
     }
-
     function QuotaStrip(props) {
       const t = typeof props.t === 'function' ? props.t : fallbackT;
       const placement = props.placement === 'right' ? 'right' : 'left';

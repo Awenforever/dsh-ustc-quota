@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.25 | 2026-11-16 |
+| Plugin | `dsh-ustc-quota` 1.1.26 | 2026-11-16 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -625,3 +625,30 @@ bottom 77:
 |---|---|---|
 | dock | x 980, y 83, w 254, right 1234 | handle.right + 6, tabs.bottom + 6, rail − 6 |
 | background | rgb(249,250,251) | sidebar fill |
+
+## 30. v1.1.26 — the dock reserves its own strip instead of squeezing the transcript
+
+Because the transcript is centred in the conversation box, the blank strip right of
+it is narrower than the one on the left, and v1.1.25 hid the card entirely once the
+sidebar shrank the column (the span fell under the minimum width).
+
+v1.1.26 chooses "shrink the conversation area, never cover the turn navigator":
+while the right position is active the plugin sets `padding-right` on the
+conversation column to `width + 12`. DSH centres the transcript and the turn rail
+inside the padding box, so both slide left and the dock owns the reserved strip.
+The card can therefore touch the window edge without covering anything.
+
+Width policy: 26% of the column, clamped to 200–340 px; if that leaves the
+transcript under 360 px the dock drops to whatever keeps the transcript whole,
+down to a 140 px floor — below that the card gets narrower rather than vanishing.
+
+Verified over CDP on TokenWorks (padding probe showed the turn rail moving from
+x 1240 to x 948 under a 292 px inset):
+
+| state | column | padding-right | dock | visible |
+|---|---|---|---|---|
+| sidebar open | 280–1280 (w 1000) | 272 px | x 1014, w 260, right 1274 | yes |
+| sidebar collapsed | 0–1280 (w 1280) | 345 px | x 941, w 333, right 1274 | yes |
+
+Switching back to the left seat removes the padding (`padding-right: ""`), and
+only one card is ever mounted.
