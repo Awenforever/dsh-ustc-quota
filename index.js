@@ -66,6 +66,22 @@ export function apply(ctx, config) {
     kind: 'exact',
     path: '/plugins/dsh-ustc-quota/diag',
     handler: (request, response) => {
+      if (request.method === 'GET') {
+        try {
+          const web = ctx.webServer || {};
+          const info = {};
+          for (const key of Object.keys(web)) {
+            const value = web[key];
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') info[key] = value;
+          }
+          response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+          response.end(JSON.stringify({ info, keys: Object.keys(web) }));
+        } catch (error) {
+          response.writeHead(500);
+          response.end(String(error));
+        }
+        return;
+      }
       let body = '';
       request.on('data', (chunk) => { body += chunk; });
       request.on('end', () => {
