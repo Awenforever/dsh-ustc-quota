@@ -92,7 +92,7 @@ const shim = {
 };
 
 const dictionary = { zh: {} };
-let QuotaStrip = null;
+let SidebarSeat = null;
 const plugin = captured.factory((id) => {
   if (id === 'react') return shim;
   throw new Error('unexpected require: ' + id);
@@ -116,13 +116,13 @@ const ctx = {
       register();
     },
     register(meta, component) {
-      if (meta && meta.name === 'sidebar.footer.action') QuotaStrip = component;
+      if (meta && meta.name === 'sidebar.footer.action') SidebarSeat = component;
       return () => {};
     },
   },
 };
 plugin.apply(ctx);
-if (!QuotaStrip) throw new Error('QuotaStrip was not registered');
+if (!SidebarSeat) throw new Error('sidebar seat was not registered');
 
 const windowEntry = (id, used, limit, ratio, resetAt) => ({
   id,
@@ -191,10 +191,18 @@ const snapshot = {
   ],
 };
 
-// Hook order in QuotaStrip: snapshot, error, loading, refreshing, now, ...
+// Hook order in QuotaStrip: cardHovered, markHovered, snapshot, error, loading,
+// refreshing, now, ...
+const hover = process.env.SHOT_HOVER === '1';
 shim.__index = 0;
-shim.__seed = { 0: snapshot, 2: false, 4: Date.parse('2026-11-15T19:30:00+08:00') };
-const tree = QuotaStrip({ t: (key) => dictionary.zh[key] || key });
+shim.__seed = {
+  0: hover,
+  1: hover,
+  2: snapshot,
+  4: false,
+  6: Date.parse('2026-11-15T19:30:00+08:00'),
+};
+const tree = SidebarSeat({ t: (key) => dictionary.zh[key] || key });
 
 const UNITLESS = new Set([
   'fontWeight', 'opacity', 'zIndex', 'lineHeight', 'flex', 'flexGrow', 'flexShrink',
@@ -235,9 +243,11 @@ function render(node) {
       attrs.push('class="' + esc(value) + '"');
       continue;
     }
+    // SVG keeps a few camelCase attributes in the DOM; everything else maps to kebab-case.
+    const SVG_CAMEL = new Set(['viewBox', 'preserveAspectRatio', 'gradientUnits', 'patternUnits', 'clipPathUnits', 'startOffset', 'textLength']);
     const name = key.startsWith('aria-') || key.startsWith('data-')
       ? key
-      : key.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase());
+      : SVG_CAMEL.has(key) ? key : key.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase());
     if (value === true) {
       attrs.push(name);
     } else {
@@ -250,6 +260,10 @@ function render(node) {
 }
 
 const card = render(tree);
+if (process.env.SHOT_DUMP === '1') {
+  const at = card.indexOf('data-ustc-mark');
+  console.log('MARKUP ' + card.slice(Math.max(0, at - 260), at + 700));
+}
 const fonts = '-apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif';
 const light = {
   '--dsw-alias-bg-base': '#ffffff',

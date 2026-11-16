@@ -11,14 +11,12 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.21';
+    const CLIENT_VERSION = '1.1.22';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
     const HOST_VERSION_KEY = `${NS}:host-version-reload`;
     const POSITION_KEY = `${NS}:position`;
-    const RIGHT_DOCK_WIDTH = 300;
-    const RIGHT_DOCK_GAP = 12;
 
     function readDshVersion() {
       try {
@@ -382,6 +380,19 @@ window.__ModuleLoader__.load({
         fontSize: 13,
         letterSpacing: '-0.01em',
         whiteSpace: 'nowrap',
+      },
+      brandButton: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: 0,
+        padding: 0,
+        border: 0,
+        background: 'transparent',
+        color: 'var(--dsw-alias-label-primary)',
+        cursor: 'pointer',
+        lineHeight: 0,
+        flex: '0 0 auto',
       },
       brandMark: {
         display: 'inline-flex',
@@ -1013,9 +1024,12 @@ window.__ModuleLoader__.load({
       return provider;
     }
 
-    function TokenWorksMark() {
-      // Redrawn from the TokenWorks brand mark (five rounded tiles forming a T),
-      // as a 24-viewBox monochrome line icon so it inherits currentColor.
+    // Resting state: the TokenWorks brand mark (five rounded tiles forming a T),
+    // redrawn as a 24-viewBox monochrome line icon. Hovering the card swaps it for
+    // the dock switch glyph so the header keeps a single 13 px seat.
+    function TokenWorksMark(props) {
+      const showSwitch = props && props.showSwitch === true;
+      const targetRight = !props || props.target !== 'left';
       const tile = (x, y) => h('rect', {
         key: x + '-' + y,
         x,
@@ -1026,14 +1040,29 @@ window.__ModuleLoader__.load({
         stroke: 'currentColor',
         strokeWidth: 1.6,
       });
+      const frame = (children) => h('svg', {
+        width: 13,
+        height: 13,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        style: { display: 'block' },
+        'data-ustc-mark-glyph': showSwitch ? 'switch' : 'brand',
+      }, children);
+      const switchGlyph = targetRight
+        ? [
+          h('rect', { key: 'f', x: 2.4, y: 4.6, width: 19.2, height: 14.8, rx: 2.6, stroke: 'currentColor', strokeWidth: 1.5 }),
+          h('path', { key: 'a', d: 'M7.4 12h7.4', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
+          h('path', { key: 'b', d: 'M12.2 9.1 15.4 12l-3.2 2.9', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+        ]
+        : [
+          h('rect', { key: 'f', x: 2.4, y: 4.6, width: 19.2, height: 14.8, rx: 2.6, stroke: 'currentColor', strokeWidth: 1.5 }),
+          h('path', { key: 'a', d: 'M16.6 12H9.2', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
+          h('path', { key: 'b', d: 'M11.8 9.1 8.6 12l3.2 2.9', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+        ];
       return h('span', { style: STYLE.brandMark, 'aria-hidden': true, 'data-ustc-mark': '' },
-        h('svg', { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', style: { display: 'block' } },
-          tile(2.25, 3.5),
-          tile(9.25, 3.5),
-          tile(16.25, 3.5),
-          tile(9.25, 10.5),
-          tile(9.25, 17.5)
-        )
+        frame(showSwitch
+          ? switchGlyph
+          : [tile(2.25, 3.5), tile(9.25, 3.5), tile(16.25, 3.5), tile(9.25, 10.5), tile(9.25, 17.5)])
       );
     }
 
@@ -1065,91 +1094,123 @@ window.__ModuleLoader__.load({
       return React.useSyncExternalStore(subscribePanelPosition, readPanelPosition, readPanelPosition);
     }
 
-    // The sidebar seat renders the card only while the left position is chosen.
+    // Both seats stay mounted so switching dock position keeps the fetched data:
+    // the hidden seat only stops polling, it never unmounts.
     function LeftDock(props) {
       const position = usePanelPosition();
-      if (position !== 'left') return null;
-      return h(QuotaStrip, Object.assign({}, props, { placement: 'left' }));
+      const active = position === 'left';
+      // No wrapper element: DSH's footer layout normalisation rewrites display on
+      // ancestors, which would unhide a wrapper we hid ourselves. The card stays
+      // mounted (state preserved) and returns null while the other seat is active.
+      return h(QuotaStrip, Object.assign({}, props, { placement: 'left', active, visible: active }));
     }
 
     // DSH exposes no plugin seat for the conversation's right column: 'rightbar'
     // is a single seat owned by the shipped right sidebar. The dock therefore
-    // measures the conversation column and pins itself to that column's right
-    // edge, so it follows the conversation when the sidebar opens or closes.
+    // measures the conversation column and pins itself into the blank strip
+    // between the chat content and the turn navigator, so it follows the
+    // conversation when either side is dragged or toggled.
+    const DOCK_GAP = 24;
+    const DOCK_MIN_WIDTH = 220;
+    const DOCK_MAX_WIDTH = 420;
+
+    function measureRightDock() {
+      const holder = document.querySelector('[data-slot="main.conversation"]');
+      const column = holder ? (holder.firstElementChild || holder) : null;
+      if (!column) return null;
+      const columnRect = column.getBoundingClientRect();
+      if (columnRect.width < 240 || columnRect.height < 160) return null;
+
+      const flowHolder = document.querySelector('[data-slot="conversation.chat.flow"]');
+      const flow = flowHolder ? (flowHolder.firstElementChild || flowHolder) : null;
+      const flowRect = flow ? flow.getBoundingClientRect() : null;
+
+      // The turn navigator is a rail of per-turn buttons at the column's right edge.
+      let navLeft = null;
+      for (const button of document.querySelectorAll('button[aria-label]')) {
+        const label = button.getAttribute('aria-label') || '';
+        if (!/turnNavigation|轮次|跳转/i.test(label)) continue;
+        const rect = button.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) navLeft = navLeft === null ? rect.left : Math.min(navLeft, rect.left);
+      }
+      if (navLeft === null) navLeft = columnRect.right - 26;
+
+      let width = DOCK_MAX_WIDTH;
+      if (flowRect && flowRect.width > 0 && flowRect.right < navLeft) {
+        const available = navLeft - flowRect.right - DOCK_GAP * 2;
+        width = Math.min(DOCK_MAX_WIDTH, Math.max(DOCK_MIN_WIDTH, Math.round(available)));
+      }
+      width = Math.max(DOCK_MIN_WIDTH, Math.min(width, Math.round(columnRect.width - DOCK_GAP * 2)));
+
+      return {
+        top: Math.max(8, Math.round(columnRect.top) + 16),
+        right: Math.max(8, Math.round(window.innerWidth - navLeft) + DOCK_GAP),
+        width,
+        maxHeight: Math.max(160, Math.round(columnRect.height) - 32),
+      };
+    }
+
     function RightDock(props) {
       const position = usePanelPosition();
+      const active = position === 'right';
       const [box, setBox] = React.useState(null);
       React.useEffect(() => {
-        if (position !== 'right') {
-          setBox(null);
-          return undefined;
-        }
         let frame = 0;
         let observer = null;
         let observed = null;
         const measure = () => {
           frame = 0;
-          // The slot wrapper renders with display: contents, so it has no box of
-          // its own; the column is its first element child.
           const holder = document.querySelector('[data-slot="main.conversation"]');
           const column = holder ? (holder.firstElementChild || holder) : null;
-          if (!column) {
-            setBox(null);
-            return;
-          }
-          if (observed !== column && typeof ResizeObserver === 'function') {
+          if (column && column !== observed && typeof ResizeObserver === 'function') {
             if (observer) observer.disconnect();
             observed = column;
             observer = new ResizeObserver(schedule);
             observer.observe(column);
           }
-          const rect = column.getBoundingClientRect();
-          if (rect.width < 200 || rect.height < 120) {
-            setBox(null);
-            return;
-          }
-          setBox({
-            top: Math.max(8, Math.round(rect.top) + RIGHT_DOCK_GAP),
-            right: Math.max(8, Math.round(window.innerWidth - rect.right) + RIGHT_DOCK_GAP),
-            maxHeight: Math.max(160, Math.round(rect.height) - RIGHT_DOCK_GAP * 2),
-          });
+          setBox(measureRightDock());
         };
         function schedule() {
           if (!frame) frame = window.requestAnimationFrame(measure);
         }
         measure();
-        const retry = window.setInterval(measure, 2000);
+        const timer = window.setInterval(measure, 2000);
         window.addEventListener('resize', schedule);
         return () => {
           window.removeEventListener('resize', schedule);
-          window.clearInterval(retry);
+          window.clearInterval(timer);
           if (observer) observer.disconnect();
           if (frame) window.cancelAnimationFrame(frame);
         };
-      }, [position]);
-      if (position !== 'right' || !box) return null;
+      }, []);
+      const shown = active && box !== null;
       return h('div', {
         'data-ustc-quota-dock': 'right',
         style: {
           position: 'fixed',
-          top: box.top,
-          right: box.right,
-          width: RIGHT_DOCK_WIDTH,
-          maxHeight: box.maxHeight,
+          top: box ? box.top : 0,
+          right: box ? box.right : 0,
+          width: box ? box.width : DOCK_MAX_WIDTH,
+          maxHeight: box ? box.maxHeight : 0,
           overflowY: 'auto',
-          display: 'flex',
+          display: shown ? 'flex' : 'none',
           flexDirection: 'column',
           gap: 6,
           pointerEvents: 'auto',
           zIndex: 5,
         },
-      }, h(QuotaStrip, Object.assign({}, props, { placement: 'right', wide: true })));
+      }, h(QuotaStrip, Object.assign({}, props, { placement: 'right', wide: true, active, visible: active })));
     }
 
     function QuotaStrip(props) {
       const t = typeof props.t === 'function' ? props.t : fallbackT;
       const placement = props.placement === 'right' ? 'right' : 'left';
       const position = usePanelPosition();
+      const active = props.active !== false;
+      const [cardHovered, setCardHovered] = React.useState(false);
+      const [markHovered, setMarkHovered] = React.useState(false);
+      const activeRef = React.useRef(active);
+      activeRef.current = active;
       const [snapshot, setSnapshot] = React.useState(null);
       const [error, setError] = React.useState(null);
       const [loading, setLoading] = React.useState(true);
@@ -1290,6 +1351,12 @@ window.__ModuleLoader__.load({
         }
 
         async function run() {
+          if (!activeRef.current) {
+            // The card is mounted in the other seat right now: keep the last data,
+            // skip the request, and try again on the next tick.
+            schedule(15000);
+            return;
+          }
           const body = await load(false);
           if (disposed) return;
           schedule(body && Number.isFinite(body.pollAfterMs) ? body.pollAfterMs : 15000);
@@ -1331,7 +1398,7 @@ window.__ModuleLoader__.load({
         if (!root) return undefined;
         // The right dock is not inside DSH's footer row; rewriting ancestors there
         // would fight the dock container instead of the sidebar layout.
-        if (placement === 'right') return undefined;
+        if (placement === 'right' || props.visible === false) return undefined;
         return installFooterLayout(root);
       }, [props.wide, placement]);
 
@@ -1342,6 +1409,8 @@ window.__ModuleLoader__.load({
       const tokenworksNotReady = warnings.includes('tokenworks-not-ready');
 
       if (props.wide === false) return null;
+      // Hidden seat: keep the component (and its data) mounted, render no DOM.
+      if (props.visible === false) return null;
 
       function handleVersionClick() {
         if (updateInfo && updateInfo.updateAvailable) {
@@ -1666,7 +1735,18 @@ window.__ModuleLoader__.load({
           ? t('updateChecking')
           : t('versionCheck');
       const header = h('div', { style: STYLE.header },
-        h(TokenWorksMark),
+        h('button', {
+          type: 'button',
+          'data-ustc-position-toggle': '',
+          'aria-label': position === 'right' ? t('moveToLeft') : t('moveToRight'),
+          title: position === 'right' ? t('moveToLeft') : t('moveToRight'),
+          onClick: () => { writePanelPosition(position === 'right' ? 'left' : 'right'); },
+          onMouseEnter: () => { setMarkHovered(true); },
+          onMouseLeave: () => { setMarkHovered(false); },
+          onFocus: () => { setMarkHovered(true); },
+          onBlur: () => { setMarkHovered(false); },
+          style: STYLE.brandButton,
+        }, h(TokenWorksMark, { showSwitch: markHovered || cardHovered, target: position === 'right' ? 'left' : 'right' })),
         h('span', { style: STYLE.title, 'data-ustc-title': '' }, t('title')),
         h('button', {
           type: 'button',
@@ -1687,14 +1767,7 @@ window.__ModuleLoader__.load({
           : null,
         error && snapshot ? h('span', { style: STYLE.warn, title: error }, '!') : null,
         h('span', { style: STYLE.meta }, updated ? `${t('updatedLabel')} ${updated}` : ''),
-        h('button', {
-          type: 'button',
-          'data-ustc-position-toggle': '',
-          'aria-label': position === 'right' ? t('moveToLeft') : t('moveToRight'),
-          title: position === 'right' ? t('moveToLeft') : t('moveToRight'),
-          onClick: () => { writePanelPosition(position === 'right' ? 'left' : 'right'); },
-          style: STYLE.refresh,
-        }, position === 'right' ? '⇤' : '⇥'),
+
         h('button', {
           type: 'button',
           'aria-label': t('refresh'),
@@ -1836,6 +1909,8 @@ window.__ModuleLoader__.load({
         role: 'group',
         'aria-label': t('title'),
         'data-ustc-quota-root': '',
+        onMouseEnter: () => { setCardHovered(true); },
+        onMouseLeave: () => { setCardHovered(false); setMarkHovered(false); },
       },
       header,
       restartBanner,

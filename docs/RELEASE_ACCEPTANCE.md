@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.21 | 2026-11-16 |
+| Plugin | `dsh-ustc-quota` 1.1.22 | 2026-11-16 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -522,3 +522,40 @@ The dock tracks the column's right edge (column right minus 12 px) rather than
 the window edge, which is what "follows the conversation" means here. The
 sidebar seat renders nothing while the right position is chosen, so the card is
 never shown twice.
+
+## 26. v1.1.22 — the dock becomes the only control, and it stops covering native UI
+
+v1.1.21 put a text button in the header and pinned the dock to the
+conversation column's right edge. Both were wrong: the button was noise, and
+the edge sits under the native right-bar controls.
+
+v1.1.22:
+
+- The header button is gone. The brand mark itself is the control: hovering the
+  card swaps the five-tile mark for a 24-viewBox line glyph (`rect` + arrow)
+  pointing at the other side, clicking moves the card, and the mark returns on
+  mouse-out (`data-ustc-mark-glyph` reads `brand` / `switch`).
+- The dock is placed in the blank strip between the chat content and the turn
+  navigator: it measures `[data-slot="conversation.chat.flow"]` for the left
+  bound and the per-turn `button[aria-label]` rail for the right bound, then
+  insets 24 px from both and clamps the width to 220–420 px.
+- Both seats stay mounted: the hidden one renders no DOM (DSH footer layout
+  normalisation rewrites `display` on ancestors, so a hidden wrapper is not
+  enough) but keeps its state, and it skips polling while hidden.
+
+Verified over CDP on a real TokenWorks 0.2.109 instance with a synthetic layout
+(chat content right edge 940, turn rail left edge 1240, viewport 1280):
+
+| measurement | value |
+|---|---|
+| dock | x 964, w 252, right 1216 |
+| expected (rail − 24, content.right + 24) | right 1216, width 252 |
+| cards on screen | 1 (right seat only) |
+| glyph | `brand` at rest, `switch` while hovered |
+
+At the user's 1920 px window (content right edge 1600, rail 1900) the same
+formula yields x 1624 / w 252 / right 1876, which matches the requested area.
+
+The screenshot harness had been kebab-casing `viewBox` into `view-box`, so every
+earlier harness capture drew the mark with a broken coordinate system; the fix
+preserves SVG camelCase attributes. The real DOM was always correct.
