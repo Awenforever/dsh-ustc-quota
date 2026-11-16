@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.40';
+    const CLIENT_VERSION = '1.1.46';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -477,7 +477,7 @@ window.__ModuleLoader__.load({
       legendRow: {
         display: 'grid',
         gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr))',
-        columnGap: 16,
+        columnGap: 'var(--ustc-gap, 4px)',
         alignItems: 'center',
         minWidth: 0,
         paddingBottom: 4,
@@ -486,13 +486,20 @@ window.__ModuleLoader__.load({
       keyRow: {
         display: 'grid',
         gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr))',
-        columnGap: 16,
+        columnGap: 'var(--ustc-gap, 4px)',
         alignItems: 'center',
         minWidth: 0,
         paddingTop: 6,
         paddingBottom: 2,
       },
       legendCell: {
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 0,
+      },
+      legendCellWide: {
         minWidth: 0,
         display: 'flex',
         flexDirection: 'row',
@@ -515,7 +522,7 @@ window.__ModuleLoader__.load({
         paddingLeft: 2,
       },
       legendReset: {
-        minWidth: 0,
+        width: '100%',
         fontSize: 8,
         color: 'var(--dsw-alias-label-secondary)',
         whiteSpace: 'nowrap',
@@ -564,6 +571,12 @@ window.__ModuleLoader__.load({
       cell: {
         minWidth: 0,
         display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+      },
+      cellWide: {
+        minWidth: 0,
+        display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 3,
@@ -585,8 +598,17 @@ window.__ModuleLoader__.load({
         minWidth: 0,
       },
       value: {
+        minWidth: 0,
+        fontSize: 10.5,
+        fontWeight: 650,
+        color: 'var(--dsw-alias-label-primary)',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      },
+      valueWide: {
         flex: '0 0 auto',
-        width: 44,
+        width: 'var(--ustc-value-w, 44px)',
         textAlign: 'right',
         fontSize: 10,
         fontWeight: 650,
@@ -595,10 +617,16 @@ window.__ModuleLoader__.load({
         overflow: 'hidden',
         textOverflow: 'ellipsis',
       },
-      percent: {
+      percentWide: {
         flex: '0 0 auto',
         width: 24,
         textAlign: 'right',
+        fontSize: 8.5,
+        color: 'var(--dsw-alias-label-secondary)',
+        whiteSpace: 'nowrap',
+      },
+      percent: {
+        flex: '0 0 auto',
         fontSize: 8.5,
         color: 'var(--dsw-alias-label-secondary)',
         whiteSpace: 'nowrap',
@@ -1166,72 +1194,6 @@ window.__ModuleLoader__.load({
     const DOCK_TRANSCRIPT_FLOOR = 360;
 
 
-    // When the blank strip beside the transcript is too narrow, free room on the
-    // right instead of letting the card shrink: pad the conversation column and pin
-    // the transcript to the left edge of that padded box.
-    const DOCK_COMFORT = 220;
-    let pushedColumn = null;
-    let pushedTarget = null;
-    let pushedSaved = null;
-    let padState = 0;
-
-    function transcriptOf() {
-      const flow = document.querySelector('[data-slot="conversation.chat.flow"]');
-      if (!flow) return null;
-      let node = flow;
-      for (let i = 0; i < 6 && node; i += 1) {
-        const style = getComputedStyle(node);
-        if (style.marginLeft === 'auto' || style.marginRight === 'auto') return node;
-        node = node.parentElement;
-      }
-      return flow.firstElementChild || flow;
-    }
-
-    function pushConversation(reserve) {
-      const holder = document.querySelector('[data-slot="main.conversation"]');
-      const column = holder ? (holder.firstElementChild || holder) : null;
-      if (!column) return;
-      const target = transcriptOf();
-      if (!target) return;
-      if (pushedColumn !== column) {
-        releaseConversation();
-        pushedColumn = column;
-        pushedSaved = {
-          pad: column.style.getPropertyValue('padding-right'),
-          padPriority: column.style.getPropertyPriority('padding-right'),
-        };
-      }
-      if (pushedTarget !== target) {
-        if (pushedTarget) {
-          pushedTarget.style.removeProperty('margin-left');
-          pushedTarget.style.removeProperty('margin-right');
-        }
-        pushedTarget = target;
-        target.style.setProperty('margin-left', '0px', 'important');
-        target.style.setProperty('margin-right', 'auto', 'important');
-      }
-      const wanted = reserve + 'px';
-      if (column.style.getPropertyValue('padding-right') !== wanted) {
-        column.style.setProperty('padding-right', wanted, 'important');
-      }
-      padState = reserve;
-    }
-
-    function releaseConversation() {
-      if (pushedTarget) {
-        pushedTarget.style.removeProperty('margin-left');
-        pushedTarget.style.removeProperty('margin-right');
-        pushedTarget = null;
-      }
-      if (pushedColumn && pushedSaved) {
-        if (pushedSaved.pad) pushedColumn.style.setProperty('padding-right', pushedSaved.pad, pushedSaved.padPriority);
-        else pushedColumn.style.removeProperty('padding-right');
-      }
-      pushedColumn = null;
-      pushedSaved = null;
-      padState = 0;
-    }
-
     function measureRightDock() {
       const holder = document.querySelector('[data-slot="main.conversation"]');
       const column = holder ? (holder.firstElementChild || holder) : null;
@@ -1251,15 +1213,18 @@ window.__ModuleLoader__.load({
       }
       if (boundaryRight === null) boundaryRight = columnRect.left + columnRect.width * 0.5 + 24;
 
-      // Right bound: whatever native chrome lives at the column's right edge — the
-      // turn rail when there are turns, otherwise the right-sidebar rail button.
+      // Right bound: the turn rail when there are turns; otherwise the collapsed
+      // right-sidebar icon rail, which only counts when it sits at the far right.
       let rightLimit = columnRect.right;
       for (const button of document.querySelectorAll('button[aria-label]')) {
         const label = button.getAttribute('aria-label') || '';
-        if (!/turnNavigation|轮次|跳转|右侧边栏/i.test(label)) continue;
+        const isTurn = /turnNavigation|轮次|跳转/i.test(label);
+        const isRail = /右侧边栏/.test(label);
+        if (!isTurn && !isRail) continue;
         const rect = button.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) continue;
         if (rect.left <= boundaryRight) continue;
+        if (isRail && columnRect.right - rect.left > 72) continue;
         if (rect.left < rightLimit) rightLimit = rect.left;
       }
       if (rightLimit > columnRect.right) rightLimit = columnRect.right;
@@ -1311,20 +1276,7 @@ window.__ModuleLoader__.load({
             observer = new ResizeObserver(schedule);
             observer.observe(column);
           }
-          const next = measureRightDock();
-          if (activeRef.current && next) {
-            const natural = next.naturalSpan;
-            let pad = padState;
-            if (natural < DOCK_COMFORT - 8) pad = pad + (DOCK_COMFORT - natural);
-            else if (natural > DOCK_COMFORT + 24) pad = Math.max(0, pad - (natural - DOCK_COMFORT));
-            const limit = Math.max(0, next.columnWidth - 340);
-            pad = Math.min(Math.round(pad), limit);
-            if (pad > 0) pushConversation(pad);
-            else releaseConversation();
-          } else {
-            releaseConversation();
-          }
-          setBox(next);
+          setBox(measureRightDock());
         };
         function schedule() {
           if (!frame) frame = window.requestAnimationFrame(measure);
@@ -1364,6 +1316,9 @@ window.__ModuleLoader__.load({
       const position = usePanelPosition();
       const active = props.active !== false;
       const [cardHovered, setCardHovered] = React.useState(false);
+      const [narrow, setNarrow] = React.useState(false);
+      // The one-line layout needs ~340px of card width; below that keep the compact card.
+      const wideLayout = placement === 'right' && !narrow;
       const [markHovered, setMarkHovered] = React.useState(false);
       const activeRef = React.useRef(active);
       activeRef.current = active;
@@ -1548,6 +1503,19 @@ window.__ModuleLoader__.load({
           document.removeEventListener('visibilitychange', onVisibility);
         };
       }, [load]);
+
+      React.useLayoutEffect(() => {
+        const root = rootRef.current;
+        if (!root || typeof ResizeObserver !== 'function') return undefined;
+        const observer = new ResizeObserver(() => {
+          // Border-box width: the padding-free content box is always smaller and would
+          // misfire the threshold by the card's own insets.
+          const width = root.getBoundingClientRect().width;
+          setNarrow(width < 340);
+        });
+        observer.observe(root);
+        return () => { observer.disconnect(); };
+      }, [props.wide]);
 
       React.useLayoutEffect(() => {
         const root = rootRef.current;
@@ -1748,7 +1716,7 @@ window.__ModuleLoader__.load({
             ...candidates.map((window) => `${window.id}: ${window.resetAt ? formatFull(window.resetAt) : t('notConfigured')}`),
           ].join('\n')
           : label;
-        return h('div', { style: STYLE.legendCell, title },
+        return h('div', { style: wideLayout ? STYLE.legendCellWide : STYLE.legendCell, title },
           h('div', { style: STYLE.legendName }, label),
           h('div', { style: STYLE.legendReset }, resetText)
         );
@@ -1805,30 +1773,44 @@ window.__ModuleLoader__.load({
         if (window.source) titleParts.push(sourceLabel(window.source));
         if (isStale) titleParts.push(t('stale'));
 
-        return h('div', { style: STYLE.cell, title: titleParts.join(' · ') },
-          h('span', { style: STYLE.value }, `${isStale ? '≈ ' : ''}${valueText}`),
-          h('div', {
-            style: { ...STYLE.inlineBar, opacity: isStale ? 0.55 : 1 },
-            role: 'progressbar',
-            'aria-label': label,
-            'aria-valuemin': 0,
-            'aria-valuemax': 100,
-            'aria-valuenow': ratio === null ? undefined : Math.round(Math.min(1, Math.max(0, ratio)) * 100),
-            'aria-valuetext': percent || valueText,
+        const barNode = (style) => h('div', {
+          style: { ...style, opacity: isStale ? 0.55 : 1 },
+          role: 'progressbar',
+          'aria-label': label,
+          'aria-valuemin': 0,
+          'aria-valuemax': 100,
+          'aria-valuenow': ratio === null ? undefined : Math.round(Math.min(1, Math.max(0, ratio)) * 100),
+          'aria-valuetext': percent || valueText,
+        },
+        h('div', { style: STYLE.track, 'aria-hidden': true }),
+        h('div', {
+          style: {
+            position: 'relative',
+            height: '100%',
+            width: fillWidth,
+            background: usedColor,
+            borderRadius: 999,
+            transition: 'width 200ms ease',
           },
-          h('div', { style: STYLE.track, 'aria-hidden': true }),
-          h('div', {
-            style: {
-              position: 'relative',
-              height: '100%',
-              width: fillWidth,
-              background: usedColor,
-              borderRadius: 999,
-              transition: 'width 200ms ease',
-            },
-          })
+        })
+        );
+        const valueNode = (style) => h('span', { style }, `${isStale ? '≈ ' : ''}${valueText}`);
+        const percentNode = (style) => (percent ? h('span', { style: { ...style, color: percentColor } }, percent) : null);
+
+        if (wideLayout) {
+          return h('div', { style: STYLE.cellWide, title: titleParts.join(' · ') },
+            valueNode(STYLE.valueWide),
+            barNode(STYLE.inlineBar),
+            percentNode(STYLE.percentWide)
+          );
+        }
+
+        return h('div', { style: STYLE.cell, title: titleParts.join(' · ') },
+          h('div', { style: STYLE.valueLine },
+            valueNode(STYLE.value),
+            percentNode(STYLE.percent)
           ),
-          percent ? h('span', { style: { ...STYLE.percent, color: percentColor } }, percent) : null
+          barNode(STYLE.bar)
         );
       }
 
@@ -1882,7 +1864,24 @@ window.__ModuleLoader__.load({
 
       const failed = keys.filter((key) => key.ok === false);
       const keyColumnWidth = keyColumnWidthFor(keys, activeProvider, defaultProvider);
-      const tableStyle = { ...STYLE.table, '--ustc-key-col': `${keyColumnWidth}px` };
+      // Align the bars by sizing the value column to the longest value on screen.
+      let valueChars = 3;
+      for (const key of keys) {
+        for (const window of (key.windows || [])) {
+          const usedValue = typeof window.used === 'number' && Number.isFinite(window.used) ? window.used : null;
+          const limitValue = typeof window.limit === 'number' && Number.isFinite(window.limit) ? window.limit : null;
+          const text = usedValue === null
+            ? '—'
+            : `${formatNumber(usedValue)}/${limitValue === null ? '—' : formatNumber(limitValue)}`;
+          if (text.length > valueChars) valueChars = text.length;
+        }
+      }
+      const tableStyle = {
+        ...STYLE.table,
+        '--ustc-key-col': `${keyColumnWidth}px`,
+        '--ustc-gap': wideLayout ? '16px' : '4px',
+        '--ustc-value-w': `${Math.min(12, valueChars + 0.5)}ch`,
+      };
       const versionTitle = updateInfo && updateInfo.updateAvailable
         ? `${t('updateAvailable')} v${updateInfo.latestVersion}`
         : updateChecking

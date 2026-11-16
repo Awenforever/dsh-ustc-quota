@@ -192,18 +192,27 @@ const snapshot = {
   ],
 };
 
-// Hook order in QuotaStrip: cardHovered, markHovered, snapshot, error, loading,
 // refreshing, now, ...
+const columnWidth = process.env.SHOT_WIDTH ? Number(process.env.SHOT_WIDTH) : (process.env.SHOT_NARROW === '1' ? 240 : 340);
 const hover = process.env.SHOT_HOVER === '1';
+const narrow = process.env.SHOT_NARROW === '1' || (process.env.SHOT_PLACEMENT === 'right' && process.env.SHOT_NARROW !== '0' && false);
 shim.__index = 0;
+// useState order: cardHovered, narrow, markHovered, snapshot, error, loading,
+// refreshing, now, ...
 shim.__seed = {
   0: hover,
-  1: hover,
-  2: snapshot,
-  4: false,
-  6: Date.parse('2026-11-15T19:30:00+08:00'),
+  1: narrow,
+  2: hover,
+  3: snapshot,
+  5: false,
+  7: Date.parse('2026-11-15T19:30:00+08:00'),
 };
-const tree = SidebarSeat({ t: (key) => dictionary.zh[key] || key });
+const seat = SidebarSeat({ t: (key) => dictionary.zh[key] || key });
+// The seat element wraps QuotaStrip; render that inner component with the wanted placement.
+const placement = process.env.SHOT_PLACEMENT === 'right' ? 'right' : 'left';
+const tree = seat && seat.type
+  ? { type: seat.type, props: placement === 'right' ? { ...seat.props, placement, wide: true } : { ...seat.props, placement } }
+  : seat;
 
 const UNITLESS = new Set([
   'fontWeight', 'opacity', 'zIndex', 'lineHeight', 'flex', 'flexGrow', 'flexShrink',
@@ -295,7 +304,7 @@ const vars = (tokens) => Object.entries(tokens).map(([key, value]) => key + ':' 
 const html = '<!doctype html><html><head><meta charset="utf-8"><title>ustc quota card</title><style>' +
   'body{margin:0;padding:18px;background:#f4f4f6;font-family:' + fonts + ';}' +
   '.row{display:flex;gap:18px;align-items:flex-start;}' +
-  '.col{width:340px;display:flex;flex-direction:column;gap:10px;}' +
+  '.col{width:' + columnWidth + 'px;display:flex;flex-direction:column;gap:10px;}' +
   '.cap{font:600 11px ' + fonts + ';color:#6d6d78;letter-spacing:.04em;text-transform:uppercase;}' +
   '.light{' + vars(light) + 'background:#ffffff;padding:12px;border-radius:12px;}' +
   '.dark{' + vars(dark) + 'background:#17171c;padding:12px;border-radius:12px;}' +
