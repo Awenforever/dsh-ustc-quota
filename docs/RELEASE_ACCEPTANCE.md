@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.33 | 2026-11-16 |
+| Plugin | `dsh-ustc-quota` 1.1.38 | 2026-11-17 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -676,3 +676,17 @@ Both states are captured in `docs/screenshots/card-1.1.33-sidebar-*.png`. The
 reserved padding is now applied from the same loop that measures it, so a DSH
 re-render of the column cannot drop it, and the rail inset is clamped to 72 px
 with the whole reserve capped at 34% of the column.
+
+## 32. v1.1.38 — compact card, and room made on the left when the strip is tight
+
+- Each window cell now renders value, percent and bar on one line (bar takes the
+  remaining inline space), and the refreshed-at timestamp moved from the header to
+  the right end of the legend row. Card height drops by roughly a third.
+- When the measured strip between the conversation boundary and the rail is under
+  220 px, the plugin pads the conversation column and pins the transcript to the
+  left edge of that padded box, so the freed space lands on the right instead of
+  being split by centring. The padding is cumulative and stops once the strip is
+  wide enough; 240 px is the readability floor.
+
+Verified over CDP on TokenWorks 1.1.38 (1280 px window, real session): padding
+settled at 146 px, dock x 1074–1234 with the rail at 1240, stable across samples.
