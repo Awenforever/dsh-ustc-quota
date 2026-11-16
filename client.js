@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.31';
+    const CLIENT_VERSION = '1.1.32';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1141,52 +1141,6 @@ window.__ModuleLoader__.load({
     const DOCK_TRANSCRIPT_FLOOR = 360;
 
 
-    let lastDiagAt = 0;
-    function reportDiag(payload) {
-      const now = Date.now();
-      if (now - lastDiagAt < 4000) return;
-      lastDiagAt = now;
-      try {
-        fetch('/plugins/dsh-ustc-quota/diag', {
-          method: 'POST',
-          cache: 'no-store',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(payload),
-        }).catch(() => {});
-      } catch {
-        // diagnostics are best-effort
-      }
-    }
-    let reservedColumn = null;
-    let reservedSaved = null;
-    let reservedSavedPriority = '';
-
-    function applyReservedPadding(reserve) {
-      const holder = document.querySelector('[data-slot="main.conversation"]');
-      const column = holder ? (holder.firstElementChild || holder) : null;
-      if (!column) return false;
-      if (reservedColumn !== column) {
-        releaseReservedPadding();
-        reservedColumn = column;
-        reservedSaved = column.style.getPropertyValue('padding-right');
-        reservedSavedPriority = column.style.getPropertyPriority('padding-right');
-      }
-      const wanted = reserve + 'px';
-      if (column.style.getPropertyValue('padding-right') !== wanted) {
-        column.style.setProperty('padding-right', wanted, 'important');
-      }
-      return true;
-    }
-
-    function releaseReservedPadding() {
-      if (!reservedColumn) return;
-      if (reservedSaved) reservedColumn.style.setProperty('padding-right', reservedSaved, reservedSavedPriority);
-      else reservedColumn.style.removeProperty('padding-right');
-      reservedColumn = null;
-      reservedSaved = null;
-      reservedSavedPriority = '';
-    }
-
     function measureRightDock() {
       const holder = document.querySelector('[data-slot="main.conversation"]');
       const column = holder ? (holder.firstElementChild || holder) : null;
@@ -1235,51 +1189,6 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const rectOf = (el) => {
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
-      };
-      const chain = [];
-      let node = document.querySelector('[data-slot="conversation.chat.flow"]');
-      while (node && chain.length < 8) {
-        chain.push({ tag: node.tagName, cls: String(node.className || '').slice(0, 60), r: rectOf(node), pad: getComputedStyle(node).paddingRight });
-        if (node === column) break;
-        node = node.parentElement;
-      }
-      reportDiag({
-        at: new Date().toISOString(),
-        column: rectOf(column),
-        columnPad: getComputedStyle(column).paddingRight,
-        columnInlinePad: column.style.getPropertyValue('padding-right'),
-        flowChain: chain,
-        handles: [...document.querySelectorAll('[class*="widthHandle"]')].map((el) => ({ side: el.getAttribute('data-side'), r: rectOf(el) })),
-        nav: (() => {
-          let min = null;
-          let count = 0;
-          for (const b of document.querySelectorAll('button[aria-label]')) {
-            const l = b.getAttribute('aria-label') || '';
-            if (!/turnNavigation|轮次|跳转/i.test(l)) continue;
-            const r = b.getBoundingClientRect();
-            if (r.width <= 0) continue;
-            count += 1;
-            min = min === null ? r.left : Math.min(min, r.left);
-          }
-          return { count, left: min === null ? null : Math.round(min) };
-        })(),
-        dock: { width, reserve, top: contentTop, railInset },
-        position: (() => { try { return window.localStorage.getItem(POSITION_KEY); } catch { return null; } })(),
-        dockRect: (() => {
-          const el = document.querySelector('[data-ustc-quota-dock]');
-          if (!el) return null;
-          const r = el.getBoundingClientRect();
-          return { x: Math.round(r.left), w: Math.round(r.width), display: getComputedStyle(el).display };
-        })(),
-        railButtons: [...document.querySelectorAll('button[aria-label]')]
-          .filter((b) => /右侧边栏/.test(b.getAttribute('aria-label') || ''))
-          .map((b) => ({ label: b.getAttribute('aria-label'), r: rectOf(b) })),
-        viewport: window.innerWidth,
-      });
       return {
         top: contentTop,
         width,

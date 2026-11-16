@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 /**
  * Host half of dsh-ustc-quota.
  *
@@ -25,7 +22,7 @@ const ROUTE_PATH = '/plugins/dsh-ustc-quota/snapshot';
 const UPDATE_PATH = '/plugins/dsh-ustc-quota/update';
 const UPDATE_APPLY_PATH = '/plugins/dsh-ustc-quota/update/apply';
 const UPDATE_TOKEN_TTL_MS = 30 * 60 * 1000;
-const PLUGIN_VERSION = '1.1.31';
+const PLUGIN_VERSION = '1.1.32';
 const KEY_INFO_PATH = 'key/info';
 const USER_INFO_PATH = 'user/info';
 const DISCOVERY_TTL_MS = 30000;
@@ -60,43 +57,7 @@ export function apply(ctx, config) {
     path: UPDATE_APPLY_PATH,
     handler: (request, response) => handleUpdateApply(ctx, updates, updateTokens, request, response),
   }), 'dsh-ustc-quota: update apply route');
-
-  // TEMPORARY diagnostics channel (removed before the next public release).
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: '/plugins/dsh-ustc-quota/diag',
-    handler: (request, response) => {
-      if (request.method === 'GET') {
-        try {
-          const web = ctx.webServer || {};
-          const info = {};
-          for (const key of Object.keys(web)) {
-            const value = web[key];
-            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') info[key] = value;
-          }
-          response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-          response.end(JSON.stringify({ info, keys: Object.keys(web) }));
-        } catch (error) {
-          response.writeHead(500);
-          response.end(String(error));
-        }
-        return;
-      }
-      let body = '';
-      request.on('data', (chunk) => { body += chunk; });
-      request.on('end', () => {
-        try {
-          const file = path.join(os.tmpdir(), 'dsh-ustc-quota-diag.jsonl');
-          fs.appendFileSync(file, String(body).replace(/[\r\n]+/g, ' ') + String.fromCharCode(10));
-          response.writeHead(204, { 'cache-control': 'no-store' });
-          response.end();
-        } catch {
-          response.writeHead(500);
-          response.end();
-        }
-      });
-    },
-  }), 'dsh-ustc-quota: diag route');}
+}
 
 function createReader(ctx, settings) {
   const cache = new Map();
