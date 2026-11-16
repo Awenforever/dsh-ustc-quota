@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.38';
+    const CLIENT_VERSION = '1.1.39';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -477,7 +477,7 @@ window.__ModuleLoader__.load({
       legendRow: {
         display: 'grid',
         gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr)) auto',
-        columnGap: 4,
+        columnGap: 8,
         alignItems: 'center',
         minWidth: 0,
         paddingBottom: 4,
@@ -486,7 +486,7 @@ window.__ModuleLoader__.load({
       keyRow: {
         display: 'grid',
         gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr))',
-        columnGap: 4,
+        columnGap: 8,
         alignItems: 'center',
         minWidth: 0,
         paddingTop: 6,
@@ -568,8 +568,8 @@ window.__ModuleLoader__.load({
         gap: 3,
       },
       inlineBar: {
-        flex: '1 1 14px',
-        minWidth: 10,
+        flex: '1 1 0',
+        minWidth: 8,
         height: 5,
         position: 'relative',
         borderRadius: 999,
@@ -584,8 +584,9 @@ window.__ModuleLoader__.load({
         minWidth: 0,
       },
       value: {
-        minWidth: 0,
-        fontSize: 10.5,
+        flex: '0 0 auto',
+        textAlign: 'right',
+        fontSize: 10,
         fontWeight: 650,
         color: 'var(--dsw-alias-label-primary)',
         whiteSpace: 'nowrap',
@@ -594,6 +595,8 @@ window.__ModuleLoader__.load({
       },
       percent: {
         flex: '0 0 auto',
+        width: 24,
+        textAlign: 'right',
         fontSize: 8.5,
         color: 'var(--dsw-alias-label-secondary)',
         whiteSpace: 'nowrap',
@@ -811,7 +814,9 @@ window.__ModuleLoader__.load({
     function formatPercent(ratio) {
       if (typeof ratio !== 'number' || !Number.isFinite(ratio)) return null;
       const percent = ratio * 100;
-      if (percent > 0 && percent < 10) return `${percent.toFixed(1)}%`;
+      const tenths = Math.round(percent * 10) / 10;
+      if (tenths === 0) return '0%';
+      if (tenths < 10) return `${tenths.toFixed(1)}%`;
       return `${Math.round(percent)}%`;
     }
 
@@ -1799,10 +1804,7 @@ window.__ModuleLoader__.load({
         if (isStale) titleParts.push(t('stale'));
 
         return h('div', { style: STYLE.cell, title: titleParts.join(' · ') },
-          h('div', { style: STYLE.valueLine },
-            h('span', { style: STYLE.value }, `${isStale ? '≈ ' : ''}${valueText}`),
-            percent ? h('span', { style: { ...STYLE.percent, color: percentColor } }, percent) : null
-          ),
+          h('span', { style: STYLE.value }, `${isStale ? '≈ ' : ''}${valueText}`),
           h('div', {
             style: { ...STYLE.inlineBar, opacity: isStale ? 0.55 : 1 },
             role: 'progressbar',
@@ -1823,7 +1825,8 @@ window.__ModuleLoader__.load({
               transition: 'width 200ms ease',
             },
           })
-          )
+          ),
+          percent ? h('span', { style: { ...STYLE.percent, color: percentColor } }, percent) : null
         );
       }
 
