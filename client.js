@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.32';
+    const CLIENT_VERSION = '1.1.33';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1140,6 +1140,38 @@ window.__ModuleLoader__.load({
     const DOCK_FLOOR_WIDTH = 140;
     const DOCK_TRANSCRIPT_FLOOR = 360;
 
+
+    // Reserved right strip: applied from the measure loop so a DSH re-render of the
+    // column cannot drop it, and restored whenever the dock leaves the right seat.
+    let reservedColumn = null;
+    let reservedSaved = null;
+    let reservedSavedPriority = '';
+
+    function applyReservedPadding(reserve) {
+      const holder = document.querySelector('[data-slot="main.conversation"]');
+      const column = holder ? (holder.firstElementChild || holder) : null;
+      if (!column) return false;
+      if (reservedColumn !== column) {
+        releaseReservedPadding();
+        reservedColumn = column;
+        reservedSaved = column.style.getPropertyValue('padding-right');
+        reservedSavedPriority = column.style.getPropertyPriority('padding-right');
+      }
+      const wanted = reserve + 'px';
+      if (column.style.getPropertyValue('padding-right') !== wanted) {
+        column.style.setProperty('padding-right', wanted, 'important');
+      }
+      return true;
+    }
+
+    function releaseReservedPadding() {
+      if (!reservedColumn) return;
+      if (reservedSaved) reservedColumn.style.setProperty('padding-right', reservedSaved, reservedSavedPriority);
+      else reservedColumn.style.removeProperty('padding-right');
+      reservedColumn = null;
+      reservedSaved = null;
+      reservedSavedPriority = '';
+    }
 
     function measureRightDock() {
       const holder = document.querySelector('[data-slot="main.conversation"]');
