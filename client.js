@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.28';
+    const CLIENT_VERSION = '1.1.29';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1231,6 +1231,16 @@ window.__ModuleLoader__.load({
           return { count, left: min === null ? null : Math.round(min) };
         })(),
         dock: { width, reserve, top: contentTop, railInset },
+        position: (() => { try { return window.localStorage.getItem(POSITION_KEY); } catch { return null; } })(),
+        dockRect: (() => {
+          const el = document.querySelector('[data-ustc-quota-dock]');
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return { x: Math.round(r.left), w: Math.round(r.width), display: getComputedStyle(el).display };
+        })(),
+        railButtons: [...document.querySelectorAll('button[aria-label]')]
+          .filter((b) => /右侧边栏/.test(b.getAttribute('aria-label') || ''))
+          .map((b) => ({ label: b.getAttribute('aria-label'), r: rectOf(b) })),
         viewport: window.innerWidth,
       });
       return {
