@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.26 | 2026-11-16 |
+| Plugin | `dsh-ustc-quota` 1.1.33 | 2026-11-16 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -652,3 +652,27 @@ x 1240 to x 948 under a 292 px inset):
 
 Switching back to the left seat removes the padding (`padding-right: ""`), and
 only one card is ever mounted.
+
+## 31. v1.1.27 – v1.1.33 — measuring the real window, and the regression that taught the lesson
+
+v1.1.26 shipped a reserved-strip dock that was only ever checked against synthetic
+layouts. On the real 1920 px window the padding never stuck (a React effect was the
+only writer) and the card overlapped both the transcript and the turn rail.
+
+Iterating on measurements alone produced two more mistakes: an unclamped rail
+inset that reserved 544 px, and — while stripping the temporary diagnostics — the
+loss of the helper functions the dock calls, which crashed the seat and made the
+card disappear entirely in v1.1.32.
+
+v1.1.33 is the first build verified with real screenshots from a real session
+(TokenWorks, one turn):
+
+| state | column | padding-right | dock | cards |
+|---|---|---|---|---|
+| sidebar open | 280–1280 (w 1000) | 272 px | x 1014, w 260, right 1274 | 1 |
+| sidebar collapsed | 0–1280 (w 1280) | 345 px | x 941, w 333, right 1274 | 1 |
+
+Both states are captured in `docs/screenshots/card-1.1.33-sidebar-*.png`. The
+reserved padding is now applied from the same loop that measures it, so a DSH
+re-render of the column cannot drop it, and the rail inset is clamped to 72 px
+with the whole reserve capped at 34% of the column.
