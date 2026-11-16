@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.30';
+    const CLIENT_VERSION = '1.1.31';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1203,19 +1203,26 @@ window.__ModuleLoader__.load({
       if (columnWidth - (width + DOCK_GAP * 2) < DOCK_TRANSCRIPT_FLOOR) {
         width = Math.max(DOCK_FLOOR_WIDTH, columnWidth - DOCK_TRANSCRIPT_FLOOR - DOCK_GAP * 2);
       }
-      // A collapsed right sidebar keeps a narrow icon rail at the column's right edge;
-      // the dock must stop before it, or it covers those native buttons.
+      // A collapsed right sidebar keeps a narrow icon rail at the column's right
+      // edge. Only a small inset counts as that rail: a wide one means the sidebar is
+      // open and the dock must not try to dodge a whole panel.
       let railInset = 0;
       for (const button of document.querySelectorAll('button[aria-label]')) {
         const label = button.getAttribute('aria-label') || '';
         if (!/右侧边栏/.test(label)) continue;
         const rect = button.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) continue;
+        if (rect.left < columnRect.left || rect.left > columnRect.right) continue;
         const inset = Math.round(columnRect.right - rect.left);
-        if (inset > 0 && inset < Math.round(columnRect.width * 0.3)) railInset = Math.max(railInset, inset);
+        if (inset > 0 && inset <= 72) railInset = Math.max(railInset, inset);
       }
       width = Math.max(DOCK_FLOOR_WIDTH, width - railInset);
-      const reserve = width + railInset + DOCK_GAP * 2;
+      let reserve = width + railInset + DOCK_GAP * 2;
+      const reserveCap = Math.round(columnRect.width * 0.34);
+      if (reserve > reserveCap) {
+        reserve = Math.max(DOCK_FLOOR_WIDTH + DOCK_GAP * 2, reserveCap);
+        width = Math.max(DOCK_FLOOR_WIDTH, reserve - railInset - DOCK_GAP * 2);
+      }
 
       // Vertical bound: never cross or touch the separator under the tab strip.
       let contentTop = Math.round(columnRect.top) + DOCK_GAP;
