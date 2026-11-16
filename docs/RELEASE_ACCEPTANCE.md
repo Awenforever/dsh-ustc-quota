@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.24 | 2026-11-16 |
+| Plugin | `dsh-ustc-quota` 1.1.25 | 2026-11-16 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -606,3 +606,22 @@ Verified over CDP with a realistic layout (flow container 280–1280, rows
 | dock | x 952, y 89, w 276, right 1228 | rows.right + 12, tabs.bottom + 12, rail − 12 − w |
 | card background | `rgb(249, 250, 251)` | sidebar fill |
 | card shadow | `rgba(0,0,0,.16) 0 3px 12px` | unchanged from the sidebar card |
+
+## 29. v1.1.25 — the right bound is the drag handle, and every inset is 6 px
+
+The conversation boundary the user drags is not the transcript container: DSH
+renders two `.widthHandle[data-side]` strips (10 px, `cursor: col-resize`) whose
+inner edge sits at content + 24 px. v1.1.24 measured chat rows, which put the
+card on top of that strip.
+
+v1.1.25 places the card between those two anchors: left = handle.right + 6,
+right = turn rail − 6, top = tab row bottom + 6 (the same 6 px the sidebar uses
+between stacked cards), width = the remaining span clamped to 180–480 px.
+
+Verified over CDP with a synthetic handle (964–974), turn rail 1240 and tab row
+bottom 77:
+
+| measurement | value | expected |
+|---|---|---|
+| dock | x 980, y 83, w 254, right 1234 | handle.right + 6, tabs.bottom + 6, rail − 6 |
+| background | rgb(249,250,251) | sidebar fill |

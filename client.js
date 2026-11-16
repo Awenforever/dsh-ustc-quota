@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.24';
+    const CLIENT_VERSION = '1.1.25';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1134,9 +1134,9 @@ window.__ModuleLoader__.load({
     // measures the conversation column and pins itself into the blank strip
     // between the chat content and the turn navigator, so it follows the
     // conversation when either side is dragged or toggled.
-    const DOCK_GAP = 12;
+    const DOCK_GAP = 6;
     const DOCK_MIN_WIDTH = 180;
-    const DOCK_MAX_WIDTH = 420;
+    const DOCK_MAX_WIDTH = 480;
 
     function measureRightDock() {
       const holder = document.querySelector('[data-slot="main.conversation"]');
@@ -1145,25 +1145,21 @@ window.__ModuleLoader__.load({
       const columnRect = column.getBoundingClientRect();
       if (columnRect.width < 240 || columnRect.height < 160) return null;
 
-      // The flow container spans the whole column; the visible conversation column is
-      // the widest chat row inside it, so measure the rows instead of the container.
-      let contentRight = null;
-      const flowHolder = document.querySelector('[data-slot="conversation.chat.flow"]');
-      if (flowHolder) {
-        const rows = flowHolder.querySelectorAll(':scope > *');
-        for (const row of rows) {
-          const rect = row.getBoundingClientRect();
-          if (rect.width < 80 || rect.height < 8) continue;
-          contentRight = contentRight === null ? rect.right : Math.max(contentRight, rect.right);
-        }
+      // DSH draws two col-resize strips either side of the transcript
+      // (.widthHandle, data-side=left|right). The right one IS the conversation
+      // boundary the user drags, and its left edge is content + 24px.
+      let boundaryRight = null;
+      const handles = document.querySelectorAll('[class*="widthHandle"]');
+      for (const handle of handles) {
+        if (handle.getAttribute('data-side') === 'left') continue;
+        const rect = handle.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height < 40) continue;
+        const edge = rect.right;
+        if (boundaryRight === null || edge > boundaryRight) boundaryRight = edge;
       }
-      if (contentRight === null) {
-        const flow = flowHolder ? (flowHolder.firstElementChild || flowHolder) : null;
-        const flowRect = flow ? flow.getBoundingClientRect() : null;
-        if (flowRect && flowRect.width > 0) contentRight = flowRect.right;
-      }
+      if (boundaryRight === null) boundaryRight = columnRect.left + columnRect.width * 0.5 + 24;
 
-      // The turn navigator is a rail of per-turn buttons at the column's right edge.
+      // Turn navigator rail: per-turn buttons stacked at the column's right edge.
       let navLeft = null;
       for (const button of document.querySelectorAll('button[aria-label]')) {
         const label = button.getAttribute('aria-label') || '';
@@ -1173,16 +1169,12 @@ window.__ModuleLoader__.load({
       }
       if (navLeft === null) navLeft = columnRect.right - 26;
 
-      let width = DOCK_MAX_WIDTH;
-      if (contentRight !== null && contentRight < navLeft - DOCK_MIN_WIDTH) {
-        const available = navLeft - contentRight - DOCK_GAP * 2;
-        width = Math.min(DOCK_MAX_WIDTH, Math.max(DOCK_MIN_WIDTH, Math.round(available)));
-      }
-      width = Math.max(DOCK_MIN_WIDTH, Math.min(width, Math.round(columnRect.width - DOCK_GAP * 2)));
+      const leftEdge = Math.round(boundaryRight) + DOCK_GAP;
+      const rightEdge = Math.round(navLeft) - DOCK_GAP;
+      if (rightEdge - leftEdge < DOCK_MIN_WIDTH) return null;
 
-      // Vertical bound: the dock may never cross or touch the separator under the
-      // conversation tab strip (对话 / 轨迹 / 看板 / Codex).
-      let contentTop = Math.round(columnRect.top) + 16;
+      // Vertical bound: never cross or touch the separator under the tab strip.
+      let contentTop = Math.round(columnRect.top) + DOCK_GAP;
       const tabStrip = document.querySelector('[data-conversation-tabs]');
       if (tabStrip) {
         const row = tabStrip.parentElement || tabStrip;
@@ -1191,13 +1183,12 @@ window.__ModuleLoader__.load({
           contentTop = Math.max(contentTop, Math.round(rowRect.bottom) + DOCK_GAP);
         }
       }
-      const bottomEdge = Math.round(columnRect.bottom);
 
       return {
         top: contentTop,
-        right: Math.max(8, Math.round(window.innerWidth - navLeft) + DOCK_GAP),
-        width,
-        maxHeight: Math.max(120, bottomEdge - contentTop - DOCK_GAP / 2),
+        right: Math.round(window.innerWidth - rightEdge),
+        width: Math.min(DOCK_MAX_WIDTH, rightEdge - leftEdge),
+        maxHeight: Math.max(120, Math.round(columnRect.bottom) - contentTop - DOCK_GAP),
       };
     }
 
