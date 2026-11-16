@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.39';
+    const CLIENT_VERSION = '1.1.40';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -476,8 +476,8 @@ window.__ModuleLoader__.load({
       },
       legendRow: {
         display: 'grid',
-        gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr)) auto',
-        columnGap: 8,
+        gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr))',
+        columnGap: 16,
         alignItems: 'center',
         minWidth: 0,
         paddingBottom: 4,
@@ -486,7 +486,7 @@ window.__ModuleLoader__.load({
       keyRow: {
         display: 'grid',
         gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr))',
-        columnGap: 8,
+        columnGap: 16,
         alignItems: 'center',
         minWidth: 0,
         paddingTop: 6,
@@ -495,9 +495,10 @@ window.__ModuleLoader__.load({
       legendCell: {
         minWidth: 0,
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 0,
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'center',
+        gap: 5,
       },
       legendName: {
         fontSize: 10,
@@ -514,7 +515,7 @@ window.__ModuleLoader__.load({
         paddingLeft: 2,
       },
       legendReset: {
-        width: '100%',
+        minWidth: 0,
         fontSize: 8,
         color: 'var(--dsw-alias-label-secondary)',
         whiteSpace: 'nowrap',
@@ -585,6 +586,7 @@ window.__ModuleLoader__.load({
       },
       value: {
         flex: '0 0 auto',
+        width: 44,
         textAlign: 'right',
         fontSize: 10,
         fontWeight: 650,
@@ -1919,6 +1921,7 @@ window.__ModuleLoader__.load({
           : null,
         error && snapshot ? h('span', { style: STYLE.warn, title: error }, '!') : null,
 
+        h('span', { style: STYLE.meta }, updated ? `${t('updatedLabel')} ${updated}` : ''),
         h('button', {
           type: 'button',
           'aria-label': t('refresh'),
@@ -1955,7 +1958,6 @@ window.__ModuleLoader__.load({
             h('div', { style: STYLE.legendRow },
               h('div', { key: 'corner' }),
               WINDOW_IDS.map((id) => h(React.Fragment, { key: id }, windowLegend(id))),
-              h('div', { key: 'updated', style: STYLE.legendMeta, title: updated || '' }, updated ? `${t('updatedLabel')} ${updated}` : '')
             ),
             keys.map((key, index) => keyRow(key, index, activeProvider))
           ),
