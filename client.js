@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.29';
+    const CLIENT_VERSION = '1.1.30';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1157,6 +1157,36 @@ window.__ModuleLoader__.load({
         // diagnostics are best-effort
       }
     }
+    let reservedColumn = null;
+    let reservedSaved = null;
+    let reservedSavedPriority = '';
+
+    function applyReservedPadding(reserve) {
+      const holder = document.querySelector('[data-slot="main.conversation"]');
+      const column = holder ? (holder.firstElementChild || holder) : null;
+      if (!column) return false;
+      if (reservedColumn !== column) {
+        releaseReservedPadding();
+        reservedColumn = column;
+        reservedSaved = column.style.getPropertyValue('padding-right');
+        reservedSavedPriority = column.style.getPropertyPriority('padding-right');
+      }
+      const wanted = reserve + 'px';
+      if (column.style.getPropertyValue('padding-right') !== wanted) {
+        column.style.setProperty('padding-right', wanted, 'important');
+      }
+      return true;
+    }
+
+    function releaseReservedPadding() {
+      if (!reservedColumn) return;
+      if (reservedSaved) reservedColumn.style.setProperty('padding-right', reservedSaved, reservedSavedPriority);
+      else reservedColumn.style.removeProperty('padding-right');
+      reservedColumn = null;
+      reservedSaved = null;
+      reservedSavedPriority = '';
+    }
+
     function measureRightDock() {
       const holder = document.querySelector('[data-slot="main.conversation"]');
       const column = holder ? (holder.firstElementChild || holder) : null;
@@ -1256,6 +1286,8 @@ window.__ModuleLoader__.load({
       const position = usePanelPosition();
       const active = position === 'right';
       const [box, setBox] = React.useState(null);
+      const activeRef = React.useRef(active);
+      activeRef.current = active;
       React.useEffect(() => {
         let frame = 0;
         let observer = null;
@@ -1270,7 +1302,12 @@ window.__ModuleLoader__.load({
             observer = new ResizeObserver(schedule);
             observer.observe(column);
           }
-          setBox(measureRightDock());
+          const next = measureRightDock();
+          setBox(next);
+          // Apply the reserved padding from the same loop that measured it; a React
+          // effect can be skipped when DSH re-renders the column behind our back.
+          if (activeRef.current && next) applyReservedPadding(next.reserve);
+          else releaseReservedPadding();
         };
         function schedule() {
           if (!frame) frame = window.requestAnimationFrame(measure);
@@ -1285,34 +1322,11 @@ window.__ModuleLoader__.load({
           if (frame) window.cancelAnimationFrame(frame);
         };
       }, []);
-      const reserve = box ? box.reserve : 0;
+      React.useEffect(() => () => { releaseReservedPadding(); }, []);
       React.useEffect(() => {
-        if (!active || !reserve) return undefined;
-        const holder = document.querySelector('[data-slot="main.conversation"]');
-        const column = holder ? (holder.firstElementChild || holder) : null;
-        if (!column) return undefined;
-        const saved = column.style.getPropertyValue('padding-right');
-        const priority = column.style.getPropertyPriority('padding-right');
-        const wanted = reserve + 'px';
-        const apply = () => {
-          if (column.style.getPropertyValue('padding-right') !== wanted) {
-            column.style.setProperty('padding-right', wanted, 'important');
-          }
-        };
-        apply();
-        // DSH re-renders the column and rewrites its style attribute, so watch it.
-        const observer = typeof MutationObserver === 'function'
-          ? new MutationObserver(apply)
-          : null;
-        if (observer) observer.observe(column, { attributes: true, attributeFilter: ['style'] });
-        const timer = window.setInterval(apply, 1000);
-        return () => {
-          if (observer) observer.disconnect();
-          window.clearInterval(timer);
-          if (saved) column.style.setProperty('padding-right', saved, priority);
-          else column.style.removeProperty('padding-right');
-        };
-      }, [active, reserve]);
+        if (!active) releaseReservedPadding();
+      }, [active]);
+
       const shown = active && box !== null;
       return h('div', {
         'data-ustc-quota-dock': 'right',
