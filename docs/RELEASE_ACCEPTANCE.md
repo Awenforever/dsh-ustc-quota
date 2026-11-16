@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.23 | 2026-11-16 |
+| Plugin | `dsh-ustc-quota` 1.1.24 | 2026-11-16 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -582,3 +582,27 @@ edge 940 and turn rail at 1240 on a 1280 viewport:
 | expected | y = 77 + 24, right = 1240 - 24, w = 1240 - 940 - 48 |
 | cards | 1 |
 | glyph | `switch` while hovered |
+
+## 28. v1.1.24 — the dock keeps its distance and borrows the sidebar surface
+
+v1.1.23 measured the flow **container**, which spans the whole column, so the
+left bound was wrong and the card grew over the chat text; the 24 px insets read
+as too much air on the other three sides; and a white card on the white
+conversation surface made the (unchanged) shadow look heavy.
+
+v1.1.24:
+
+- The left bound is now the widest chat **row** (`[data-slot="conversation.chat.flow"] > *`),
+  not the container. All four insets are 12 px; the width range is 180–420 px.
+- The docked card uses `--dsw-specific-sidebar-fill` — the same fill the left
+  sidebar uses — and keeps the card's original shadow. The dock container no
+  longer sets `overflow: auto`, which was clipping that shadow.
+
+Verified over CDP with a realistic layout (flow container 280–1280, rows
+620–940, turn rail 1240, tab row bottom 77, viewport 1280):
+
+| measurement | value | expected |
+|---|---|---|
+| dock | x 952, y 89, w 276, right 1228 | rows.right + 12, tabs.bottom + 12, rail − 12 − w |
+| card background | `rgb(249, 250, 251)` | sidebar fill |
+| card shadow | `rgba(0,0,0,.16) 0 3px 12px` | unchanged from the sidebar card |

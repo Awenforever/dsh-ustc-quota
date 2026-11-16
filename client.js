@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.23';
+    const CLIENT_VERSION = '1.1.24';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -367,6 +367,9 @@ window.__ModuleLoader__.load({
         lineHeight: 1.3,
         color: 'var(--dsw-alias-label-secondary)',
         fontVariantNumeric: 'tabular-nums',
+      },
+      rootDocked: {
+        background: 'var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-module-platform))',
       },
       header: {
         display: 'flex',
@@ -1131,8 +1134,8 @@ window.__ModuleLoader__.load({
     // measures the conversation column and pins itself into the blank strip
     // between the chat content and the turn navigator, so it follows the
     // conversation when either side is dragged or toggled.
-    const DOCK_GAP = 24;
-    const DOCK_MIN_WIDTH = 220;
+    const DOCK_GAP = 12;
+    const DOCK_MIN_WIDTH = 180;
     const DOCK_MAX_WIDTH = 420;
 
     function measureRightDock() {
@@ -1142,9 +1145,23 @@ window.__ModuleLoader__.load({
       const columnRect = column.getBoundingClientRect();
       if (columnRect.width < 240 || columnRect.height < 160) return null;
 
+      // The flow container spans the whole column; the visible conversation column is
+      // the widest chat row inside it, so measure the rows instead of the container.
+      let contentRight = null;
       const flowHolder = document.querySelector('[data-slot="conversation.chat.flow"]');
-      const flow = flowHolder ? (flowHolder.firstElementChild || flowHolder) : null;
-      const flowRect = flow ? flow.getBoundingClientRect() : null;
+      if (flowHolder) {
+        const rows = flowHolder.querySelectorAll(':scope > *');
+        for (const row of rows) {
+          const rect = row.getBoundingClientRect();
+          if (rect.width < 80 || rect.height < 8) continue;
+          contentRight = contentRight === null ? rect.right : Math.max(contentRight, rect.right);
+        }
+      }
+      if (contentRight === null) {
+        const flow = flowHolder ? (flowHolder.firstElementChild || flowHolder) : null;
+        const flowRect = flow ? flow.getBoundingClientRect() : null;
+        if (flowRect && flowRect.width > 0) contentRight = flowRect.right;
+      }
 
       // The turn navigator is a rail of per-turn buttons at the column's right edge.
       let navLeft = null;
@@ -1157,8 +1174,8 @@ window.__ModuleLoader__.load({
       if (navLeft === null) navLeft = columnRect.right - 26;
 
       let width = DOCK_MAX_WIDTH;
-      if (flowRect && flowRect.width > 0 && flowRect.right < navLeft) {
-        const available = navLeft - flowRect.right - DOCK_GAP * 2;
+      if (contentRight !== null && contentRight < navLeft - DOCK_MIN_WIDTH) {
+        const available = navLeft - contentRight - DOCK_GAP * 2;
         width = Math.min(DOCK_MAX_WIDTH, Math.max(DOCK_MIN_WIDTH, Math.round(available)));
       }
       width = Math.max(DOCK_MIN_WIDTH, Math.min(width, Math.round(columnRect.width - DOCK_GAP * 2)));
@@ -1226,7 +1243,7 @@ window.__ModuleLoader__.load({
           right: box ? box.right : 0,
           width: box ? box.width : DOCK_MAX_WIDTH,
           maxHeight: box ? box.maxHeight : 0,
-          overflowY: 'auto',
+          overflow: 'visible',
           display: shown ? 'flex' : 'none',
           flexDirection: 'column',
           gap: 6,
@@ -1938,7 +1955,7 @@ window.__ModuleLoader__.load({
         : null;
 
       return h('div', {
-        style: STYLE.root,
+        style: placement === 'right' ? Object.assign({}, STYLE.root, STYLE.rootDocked) : STYLE.root,
         ref: rootRef,
         role: 'group',
         'aria-label': t('title'),
