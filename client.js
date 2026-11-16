@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.37';
+    const CLIENT_VERSION = '1.1.38';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -476,7 +476,7 @@ window.__ModuleLoader__.load({
       },
       legendRow: {
         display: 'grid',
-        gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr))',
+        gridTemplateColumns: 'var(--ustc-key-col, 36px) repeat(3, minmax(0, 1fr)) auto',
         columnGap: 4,
         alignItems: 'center',
         minWidth: 0,
@@ -504,6 +504,14 @@ window.__ModuleLoader__.load({
         fontWeight: 700,
         color: 'var(--dsw-alias-label-primary)',
         whiteSpace: 'nowrap',
+      },
+      legendMeta: {
+        fontSize: 8,
+        lineHeight: 1.2,
+        color: 'var(--dsw-alias-label-secondary)',
+        whiteSpace: 'nowrap',
+        textAlign: 'right',
+        paddingLeft: 2,
       },
       legendReset: {
         width: '100%',
@@ -555,8 +563,18 @@ window.__ModuleLoader__.load({
       cell: {
         minWidth: 0,
         display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+      },
+      inlineBar: {
+        flex: '1 1 14px',
+        minWidth: 10,
+        height: 5,
+        position: 'relative',
+        borderRadius: 999,
+        background: 'transparent',
+        overflow: 'hidden',
       },
       valueLine: {
         display: 'flex',
@@ -1141,6 +1159,72 @@ window.__ModuleLoader__.load({
     const DOCK_TRANSCRIPT_FLOOR = 360;
 
 
+    // When the blank strip beside the transcript is too narrow, free room on the
+    // right instead of letting the card shrink: pad the conversation column and pin
+    // the transcript to the left edge of that padded box.
+    const DOCK_COMFORT = 220;
+    let pushedColumn = null;
+    let pushedTarget = null;
+    let pushedSaved = null;
+    let padState = 0;
+
+    function transcriptOf() {
+      const flow = document.querySelector('[data-slot="conversation.chat.flow"]');
+      if (!flow) return null;
+      let node = flow;
+      for (let i = 0; i < 6 && node; i += 1) {
+        const style = getComputedStyle(node);
+        if (style.marginLeft === 'auto' || style.marginRight === 'auto') return node;
+        node = node.parentElement;
+      }
+      return flow.firstElementChild || flow;
+    }
+
+    function pushConversation(reserve) {
+      const holder = document.querySelector('[data-slot="main.conversation"]');
+      const column = holder ? (holder.firstElementChild || holder) : null;
+      if (!column) return;
+      const target = transcriptOf();
+      if (!target) return;
+      if (pushedColumn !== column) {
+        releaseConversation();
+        pushedColumn = column;
+        pushedSaved = {
+          pad: column.style.getPropertyValue('padding-right'),
+          padPriority: column.style.getPropertyPriority('padding-right'),
+        };
+      }
+      if (pushedTarget !== target) {
+        if (pushedTarget) {
+          pushedTarget.style.removeProperty('margin-left');
+          pushedTarget.style.removeProperty('margin-right');
+        }
+        pushedTarget = target;
+        target.style.setProperty('margin-left', '0px', 'important');
+        target.style.setProperty('margin-right', 'auto', 'important');
+      }
+      const wanted = reserve + 'px';
+      if (column.style.getPropertyValue('padding-right') !== wanted) {
+        column.style.setProperty('padding-right', wanted, 'important');
+      }
+      padState = reserve;
+    }
+
+    function releaseConversation() {
+      if (pushedTarget) {
+        pushedTarget.style.removeProperty('margin-left');
+        pushedTarget.style.removeProperty('margin-right');
+        pushedTarget = null;
+      }
+      if (pushedColumn && pushedSaved) {
+        if (pushedSaved.pad) pushedColumn.style.setProperty('padding-right', pushedSaved.pad, pushedSaved.padPriority);
+        else pushedColumn.style.removeProperty('padding-right');
+      }
+      pushedColumn = null;
+      pushedSaved = null;
+      padState = 0;
+    }
+
     function measureRightDock() {
       const holder = document.querySelector('[data-slot="main.conversation"]');
       const column = holder ? (holder.firstElementChild || holder) : null;
@@ -1189,10 +1273,12 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const floored = span < 240;
       return {
         top: contentTop,
-        left: leftEdge,
-        width: Math.max(span, 160),
+        left: floored ? Math.max(0, rightEdge - 240) : leftEdge,
+        width: floored ? 240 : span,
+        naturalSpan: span,
         columnWidth: Math.round(columnRect.width),
         maxHeight: Math.max(120, Math.round(columnRect.bottom) - contentTop - DOCK_GAP),
       };
@@ -1218,7 +1304,20 @@ window.__ModuleLoader__.load({
             observer = new ResizeObserver(schedule);
             observer.observe(column);
           }
-          setBox(measureRightDock());
+          const next = measureRightDock();
+          if (activeRef.current && next) {
+            const natural = next.naturalSpan;
+            let pad = padState;
+            if (natural < DOCK_COMFORT - 8) pad = pad + (DOCK_COMFORT - natural);
+            else if (natural > DOCK_COMFORT + 24) pad = Math.max(0, pad - (natural - DOCK_COMFORT));
+            const limit = Math.max(0, next.columnWidth - 340);
+            pad = Math.min(Math.round(pad), limit);
+            if (pad > 0) pushConversation(pad);
+            else releaseConversation();
+          } else {
+            releaseConversation();
+          }
+          setBox(next);
         };
         function schedule() {
           if (!frame) frame = window.requestAnimationFrame(measure);
@@ -1705,7 +1804,7 @@ window.__ModuleLoader__.load({
             percent ? h('span', { style: { ...STYLE.percent, color: percentColor } }, percent) : null
           ),
           h('div', {
-            style: { ...STYLE.bar, opacity: isStale ? 0.55 : 1 },
+            style: { ...STYLE.inlineBar, opacity: isStale ? 0.55 : 1 },
             role: 'progressbar',
             'aria-label': label,
             'aria-valuemin': 0,
@@ -1816,7 +1915,6 @@ window.__ModuleLoader__.load({
           ? h('span', { style: STYLE.warn, title: warnings.join('\n'), 'aria-label': t('warnings') }, '!')
           : null,
         error && snapshot ? h('span', { style: STYLE.warn, title: error }, '!') : null,
-        h('span', { style: STYLE.meta }, updated ? `${t('updatedLabel')} ${updated}` : ''),
 
         h('button', {
           type: 'button',
@@ -1853,7 +1951,8 @@ window.__ModuleLoader__.load({
           h('div', { style: tableStyle },
             h('div', { style: STYLE.legendRow },
               h('div', { key: 'corner' }),
-              WINDOW_IDS.map((id) => h(React.Fragment, { key: id }, windowLegend(id)))
+              WINDOW_IDS.map((id) => h(React.Fragment, { key: id }, windowLegend(id))),
+              h('div', { key: 'updated', style: STYLE.legendMeta, title: updated || '' }, updated ? `${t('updatedLabel')} ${updated}` : '')
             ),
             keys.map((key, index) => keyRow(key, index, activeProvider))
           ),
