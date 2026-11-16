@@ -11,11 +11,14 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.20';
+    const CLIENT_VERSION = '1.1.21';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
     const HOST_VERSION_KEY = `${NS}:host-version-reload`;
+    const POSITION_KEY = `${NS}:position`;
+    const RIGHT_DOCK_WIDTH = 300;
+    const RIGHT_DOCK_GAP = 12;
 
     function readDshVersion() {
       try {
@@ -203,6 +206,8 @@ window.__ModuleLoader__.load({
       title: 'USTC 词元额度',
       updatedLabel: '更新于',
       refresh: '刷新',
+      moveToRight: '移到右侧',
+      moveToLeft: '移到左侧',
       loading: '加载中…',
       noProviders: '未发现 USTC 模型厂商',
       noProvidersHint: '请检查模型设置中 baseURL 为 api.llm.ustc.edu.cn',
@@ -274,6 +279,8 @@ window.__ModuleLoader__.load({
       title: 'USTC token quota',
       updatedLabel: 'Updated',
       refresh: 'Refresh',
+      moveToRight: 'Move to the right',
+      moveToLeft: 'Move to the left',
       loading: 'Loading…',
       noProviders: 'No USTC providers found',
       noProvidersHint: 'Check that a model provider uses baseURL api.llm.ustc.edu.cn',
@@ -1030,8 +1037,119 @@ window.__ModuleLoader__.load({
       );
     }
 
+    const panelPositionListeners = new Set();
+
+    function readPanelPosition() {
+      try {
+        return window.localStorage.getItem(POSITION_KEY) === 'right' ? 'right' : 'left';
+      } catch {
+        return 'left';
+      }
+    }
+
+    function writePanelPosition(next) {
+      try {
+        window.localStorage.setItem(POSITION_KEY, next);
+      } catch {
+        // Storage unavailable: the position stays for this session only.
+      }
+      for (const listener of panelPositionListeners) listener();
+    }
+
+    function subscribePanelPosition(listener) {
+      panelPositionListeners.add(listener);
+      return () => { panelPositionListeners.delete(listener); };
+    }
+
+    function usePanelPosition() {
+      return React.useSyncExternalStore(subscribePanelPosition, readPanelPosition, readPanelPosition);
+    }
+
+    // The sidebar seat renders the card only while the left position is chosen.
+    function LeftDock(props) {
+      const position = usePanelPosition();
+      if (position !== 'left') return null;
+      return h(QuotaStrip, Object.assign({}, props, { placement: 'left' }));
+    }
+
+    // DSH exposes no plugin seat for the conversation's right column: 'rightbar'
+    // is a single seat owned by the shipped right sidebar. The dock therefore
+    // measures the conversation column and pins itself to that column's right
+    // edge, so it follows the conversation when the sidebar opens or closes.
+    function RightDock(props) {
+      const position = usePanelPosition();
+      const [box, setBox] = React.useState(null);
+      React.useEffect(() => {
+        if (position !== 'right') {
+          setBox(null);
+          return undefined;
+        }
+        let frame = 0;
+        let observer = null;
+        let observed = null;
+        const measure = () => {
+          frame = 0;
+          // The slot wrapper renders with display: contents, so it has no box of
+          // its own; the column is its first element child.
+          const holder = document.querySelector('[data-slot="main.conversation"]');
+          const column = holder ? (holder.firstElementChild || holder) : null;
+          if (!column) {
+            setBox(null);
+            return;
+          }
+          if (observed !== column && typeof ResizeObserver === 'function') {
+            if (observer) observer.disconnect();
+            observed = column;
+            observer = new ResizeObserver(schedule);
+            observer.observe(column);
+          }
+          const rect = column.getBoundingClientRect();
+          if (rect.width < 200 || rect.height < 120) {
+            setBox(null);
+            return;
+          }
+          setBox({
+            top: Math.max(8, Math.round(rect.top) + RIGHT_DOCK_GAP),
+            right: Math.max(8, Math.round(window.innerWidth - rect.right) + RIGHT_DOCK_GAP),
+            maxHeight: Math.max(160, Math.round(rect.height) - RIGHT_DOCK_GAP * 2),
+          });
+        };
+        function schedule() {
+          if (!frame) frame = window.requestAnimationFrame(measure);
+        }
+        measure();
+        const retry = window.setInterval(measure, 2000);
+        window.addEventListener('resize', schedule);
+        return () => {
+          window.removeEventListener('resize', schedule);
+          window.clearInterval(retry);
+          if (observer) observer.disconnect();
+          if (frame) window.cancelAnimationFrame(frame);
+        };
+      }, [position]);
+      if (position !== 'right' || !box) return null;
+      return h('div', {
+        'data-ustc-quota-dock': 'right',
+        style: {
+          position: 'fixed',
+          top: box.top,
+          right: box.right,
+          width: RIGHT_DOCK_WIDTH,
+          maxHeight: box.maxHeight,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          pointerEvents: 'auto',
+          zIndex: 5,
+        },
+      }, h(QuotaStrip, Object.assign({}, props, { placement: 'right', wide: true })));
+    }
+
     function QuotaStrip(props) {
       const t = typeof props.t === 'function' ? props.t : fallbackT;
+      const placement = props.placement === 'right' ? 'right' : 'left';
+      const position = usePanelPosition();
       const [snapshot, setSnapshot] = React.useState(null);
       const [error, setError] = React.useState(null);
       const [loading, setLoading] = React.useState(true);
@@ -1210,9 +1328,12 @@ window.__ModuleLoader__.load({
 
       React.useLayoutEffect(() => {
         const root = rootRef.current;
-        if (!root) return;
+        if (!root) return undefined;
+        // The right dock is not inside DSH's footer row; rewriting ancestors there
+        // would fight the dock container instead of the sidebar layout.
+        if (placement === 'right') return undefined;
         return installFooterLayout(root);
-      }, [props.wide]);
+      }, [props.wide, placement]);
 
       const keys = snapshot && Array.isArray(snapshot.keys) ? snapshot.keys : [];
       const warnings = snapshot && Array.isArray(snapshot.warnings) ? snapshot.warnings : [];
@@ -1568,6 +1689,14 @@ window.__ModuleLoader__.load({
         h('span', { style: STYLE.meta }, updated ? `${t('updatedLabel')} ${updated}` : ''),
         h('button', {
           type: 'button',
+          'data-ustc-position-toggle': '',
+          'aria-label': position === 'right' ? t('moveToLeft') : t('moveToRight'),
+          title: position === 'right' ? t('moveToLeft') : t('moveToRight'),
+          onClick: () => { writePanelPosition(position === 'right' ? 'left' : 'right'); },
+          style: STYLE.refresh,
+        }, position === 'right' ? '⇤' : '⇥'),
+        h('button', {
+          type: 'button',
           'aria-label': t('refresh'),
           title: t('refresh'),
           disabled: refreshing,
@@ -1839,7 +1968,14 @@ window.__ModuleLoader__.load({
           order: 0,
           locale: NS,
           inject: () => ({ t }),
-        }, QuotaStrip));
+        }, LeftDock));
+        ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+          name: 'shell.overlay',
+          id: 'ustc-quota-right',
+          order: 100,
+          locale: NS,
+          inject: () => ({ t }),
+        }, RightDock));
       },
     };
   },

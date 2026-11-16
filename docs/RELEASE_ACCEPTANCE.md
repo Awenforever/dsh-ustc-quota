@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.20 | 2026-11-15 |
+| Plugin | `dsh-ustc-quota` 1.1.21 | 2026-11-16 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -496,3 +496,29 @@ tiles stay separable at 13 px. Verification uses the real component DOM:
 Observed: both marks are the same 13 px box; this mark is monochrome (black in
 light, white in dark); the title left edge is stable; the header metrics put the
 mark and title on the same center line. 40 unit tests pass.
+
+## 25. v1.1.21 — the card can dock to the right of the conversation
+
+DSH 0.2.2-rc.3 declares 89 slots, but none is a plugin-facing right column for a
+conversation: `rightbar` is a single seat owned by the shipped right sidebar
+(taking it shadows shipped UI), `conversation.view` is the chat/trajectory tab
+list, and `shell.overlay` is a frame-wide layer that does not follow a column.
+
+v1.1.21 therefore registers a second seat in `shell.overlay` and pins it to the
+conversation column: it reads `[data-slot="main.conversation"]`, takes that
+slot's first element child (the wrapper is `display: contents` and measures
+0x0), and re-measures on `ResizeObserver`, window resize and a slow poll. Cards
+stack top-down in a 300 px column with a 12 px inset.
+
+Verified on a real TokenWorks 0.2.109 instance (DSH 0.2.1-rc.5 carrier) over
+CDP, with v1.1.21 loaded from the workspace:
+
+| state | conversation column | dock |
+|---|---|---|
+| left sidebar open, right sidebar closed | x 280, w 1000, right 1280 | x 968, w 300, right 1268 |
+| right sidebar opened | x 280, w 424, right 704 | x 392, w 300, right 692 |
+
+The dock tracks the column's right edge (column right minus 12 px) rather than
+the window edge, which is what "follows the conversation" means here. The
+sidebar seat renders nothing while the right position is chosen, so the card is
+never shown twice.
