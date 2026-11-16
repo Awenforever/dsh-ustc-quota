@@ -29,6 +29,7 @@ const storage = () => {
 };
 
 let captured = null;
+const seededPosition = process.env.SHOT_POS === 'right' ? 'right' : 'left';
 globalThis.window = {
   __ModuleLoader__: {
     load(definition) {
@@ -36,7 +37,7 @@ globalThis.window = {
     },
   },
   __DSH_BOOT__: { release: { version: '0.2.2-rc.3' } },
-  localStorage: storage(),
+  localStorage: (() => { const s = storage(); s.setItem('dsh-ustc-quota:position', seededPosition); return s; })(),
   sessionStorage: storage(),
   location: { reload() {} },
   addEventListener() {},

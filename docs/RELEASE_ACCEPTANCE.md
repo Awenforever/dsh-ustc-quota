@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.22 | 2026-11-16 |
+| Plugin | `dsh-ustc-quota` 1.1.23 | 2026-11-16 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -559,3 +559,26 @@ formula yields x 1624 / w 252 / right 1876, which matches the requested area.
 The screenshot harness had been kebab-casing `viewBox` into `view-box`, so every
 earlier harness capture drew the mark with a broken coordinate system; the fix
 preserves SVG camelCase attributes. The real DOM was always correct.
+
+## 27. v1.1.23 — the dock starts below the tab strip, and the glyph stops being an arrow
+
+Two corrections from looking at the real window:
+
+- The dock was pinned to the top of the conversation column, which is the tab
+  row. It now reads `[data-conversation-tabs]`, takes that row's bottom edge,
+  adds the 24 px inset, and caps its height at `column.bottom - top - 12`, so it
+  can neither cross nor touch the separator under 对话 / 轨迹 / 看板 / Codex.
+- The hover glyph was a rectangle with an arrow, which reads as "navigate"
+  rather than "dock". It is now a layout glyph: a panel frame whose narrow band
+  (divider + solid pill) marks the side the card is about to occupy, mirrored
+  for the other direction.
+
+Verified over CDP with a synthetic tab row (bottom edge 77), chat content right
+edge 940 and turn rail at 1240 on a 1280 viewport:
+
+| measurement | value |
+|---|---|
+| dock | x 964, y 101, w 252, right 1216 |
+| expected | y = 77 + 24, right = 1240 - 24, w = 1240 - 940 - 48 |
+| cards | 1 |
+| glyph | `switch` while hovered |

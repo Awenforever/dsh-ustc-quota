@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.22';
+    const CLIENT_VERSION = '1.1.23';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1048,17 +1048,38 @@ window.__ModuleLoader__.load({
         style: { display: 'block' },
         'data-ustc-mark-glyph': showSwitch ? 'switch' : 'brand',
       }, children);
-      const switchGlyph = targetRight
-        ? [
-          h('rect', { key: 'f', x: 2.4, y: 4.6, width: 19.2, height: 14.8, rx: 2.6, stroke: 'currentColor', strokeWidth: 1.5 }),
-          h('path', { key: 'a', d: 'M7.4 12h7.4', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
-          h('path', { key: 'b', d: 'M12.2 9.1 15.4 12l-3.2 2.9', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }),
-        ]
-        : [
-          h('rect', { key: 'f', x: 2.4, y: 4.6, width: 19.2, height: 14.8, rx: 2.6, stroke: 'currentColor', strokeWidth: 1.5 }),
-          h('path', { key: 'a', d: 'M16.6 12H9.2', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
-          h('path', { key: 'b', d: 'M11.8 9.1 8.6 12l3.2 2.9', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }),
-        ];
+      // A layout glyph, not an arrow: a panel frame whose narrow band marks where
+      // the card is about to sit. Reads as "dock to this side" at 13 px.
+      const panelBand = targetRight ? 15.4 : 8.6;
+      const pillX = targetRight ? 17.1 : 3.9;
+      const switchGlyph = [
+        h('rect', {
+          key: 'frame',
+          x: 2.6,
+          y: 4.4,
+          width: 18.8,
+          height: 15.2,
+          rx: 3,
+          stroke: 'currentColor',
+          strokeWidth: 1.5,
+        }),
+        h('path', {
+          key: 'split',
+          d: 'M' + panelBand + ' 4.4V19.6',
+          stroke: 'currentColor',
+          strokeWidth: 1.5,
+          strokeLinecap: 'round',
+        }),
+        h('rect', {
+          key: 'band',
+          x: pillX,
+          y: 9.4,
+          width: 2.9,
+          height: 5.2,
+          rx: 1.45,
+          fill: 'currentColor',
+        }),
+      ];
       return h('span', { style: STYLE.brandMark, 'aria-hidden': true, 'data-ustc-mark': '' },
         frame(showSwitch
           ? switchGlyph
@@ -1142,11 +1163,24 @@ window.__ModuleLoader__.load({
       }
       width = Math.max(DOCK_MIN_WIDTH, Math.min(width, Math.round(columnRect.width - DOCK_GAP * 2)));
 
+      // Vertical bound: the dock may never cross or touch the separator under the
+      // conversation tab strip (对话 / 轨迹 / 看板 / Codex).
+      let contentTop = Math.round(columnRect.top) + 16;
+      const tabStrip = document.querySelector('[data-conversation-tabs]');
+      if (tabStrip) {
+        const row = tabStrip.parentElement || tabStrip;
+        const rowRect = row.getBoundingClientRect();
+        if (rowRect.height > 0 && rowRect.bottom > columnRect.top && rowRect.bottom < columnRect.bottom) {
+          contentTop = Math.max(contentTop, Math.round(rowRect.bottom) + DOCK_GAP);
+        }
+      }
+      const bottomEdge = Math.round(columnRect.bottom);
+
       return {
-        top: Math.max(8, Math.round(columnRect.top) + 16),
+        top: contentTop,
         right: Math.max(8, Math.round(window.innerWidth - navLeft) + DOCK_GAP),
         width,
-        maxHeight: Math.max(160, Math.round(columnRect.height) - 32),
+        maxHeight: Math.max(120, bottomEdge - contentTop - DOCK_GAP / 2),
       };
     }
 
