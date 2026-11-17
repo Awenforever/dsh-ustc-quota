@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.57';
+    const CLIENT_VERSION = '1.1.58';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1209,7 +1209,37 @@ window.__ModuleLoader__.load({
     const DOCK_TRANSCRIPT_FLOOR = 360;
 
 
-    function measureRightDock() {
+    // First come, first served. Each plugin right dock claims an arrival number the
+    // moment it becomes active on the right and publishes it as a data attribute, so
+    // a neighbour can compare. The earlier arrival keeps the natural slot; the later
+    // one stacks below it. Deliberately not id-ordered or height-ordered — whoever
+    // got there first wins, which is the least surprising rule for the user.
+    const ARRIVAL_KEY = '__dshRightDockArrival';
+    function claimDockArrival() {
+      try {
+        const scope = typeof window === 'undefined' ? null : window;
+        if (!scope) return 0;
+        const next = (Number(scope[ARRIVAL_KEY]) || 0) + 1;
+        scope[ARRIVAL_KEY] = next;
+        return next;
+      } catch {
+        return 0;
+      }
+    }
+
+    function neighbourDockVisible() {
+      try {
+        for (const node of document.querySelectorAll('[data-codex-advisor-dock="right"]')) {
+          const rect = node.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) return true;
+        }
+      } catch {
+        return false;
+      }
+      return false;
+    }
+
+    function measureRightDock(arrival, wasHereFirst) {
       const holder = document.querySelector('[data-slot="main.conversation"]');
       const column = holder ? (holder.firstElementChild || holder) : null;
       if (!column) return null;
@@ -1279,19 +1309,33 @@ window.__ModuleLoader__.load({
       let stackTop = contentTop;
       try {
         // Other plugins place their own right docks on the same anchor. Deferring to
-        // every neighbour that overlaps this band makes two docks chase each other
-        // downwards: each one steps below the other, forever. Break the symmetry —
-        // yield only to a neighbour that starts strictly above this slot, or that
-        // starts at the same top and sorts earlier by id. Exactly one dock then
-        // yields per pair, so the arrangement settles after a single step.
+        // every overlapping neighbour makes two docks chase each other downwards, so
+        // the rule is arrival order: yield to a neighbour only when it arrived first.
+        // A neighbour that arrived later stacks below us instead. Neighbours that do
+        // not publish an arrival number fall back to position: yield when it already
+        // sits in this slot, and on an exact tie let the earlier id win so the very
+        // first paint cannot deadlock.
         const MY_DOCK_ID = 'ustc-quota';
         for (const node of document.querySelectorAll('[data-codex-advisor-dock="right"]')) {
           const rect = node.getBoundingClientRect();
           if (rect.height <= 0 || rect.width <= 0) continue;
           const NEIGHBOUR_DOCK_ID = 'codex-advisor';
-          const startsAbove = rect.top < contentTop - 1;
-          const tiedAndEarlier = Math.abs(rect.top - contentTop) <= 1 && NEIGHBOUR_DOCK_ID < MY_DOCK_ID;
-          if (!startsAbove && !tiedAndEarlier) continue;
+          const neighbourArrival = Number(node.getAttribute('data-codex-advisor-dock-order')) || 0;
+          let yieldToNeighbour;
+          if (neighbourArrival > 0 && arrival > 0) {
+            yieldToNeighbour = neighbourArrival < arrival;
+          } else if (wasHereFirst && rect.top > contentTop) {
+            // We were already on the right when the neighbour appeared and it sits
+            // below us: never chase it. If instead it shares our slot (a neighbour
+            // that has not adopted this contract yet) fall through to the position
+            // rule, because two overlapping cards are worse than a wrong order.
+            yieldToNeighbour = false;
+          } else {
+            const startsAbove = rect.top < contentTop - 1;
+            const tiedAndEarlier = Math.abs(rect.top - contentTop) <= 1 && NEIGHBOUR_DOCK_ID < MY_DOCK_ID;
+            yieldToNeighbour = startsAbove || tiedAndEarlier;
+          }
+          if (!yieldToNeighbour) continue;
           if (rect.bottom > stackTop && rect.top < columnRect.bottom) {
             stackTop = Math.max(stackTop, Math.round(rect.bottom) + DOCK_GAP);
           }
@@ -1316,6 +1360,18 @@ window.__ModuleLoader__.load({
       const [box, setBox] = React.useState(null);
       const activeRef = React.useRef(active);
       activeRef.current = active;
+      const arrivalRef = React.useRef(0);
+      const firstRef = React.useRef(false);
+      React.useEffect(() => {
+        if (active) {
+          firstRef.current = !neighbourDockVisible();
+          arrivalRef.current = claimDockArrival();
+          setBox(measureRightDock(arrivalRef.current, firstRef.current));
+        } else {
+          arrivalRef.current = 0;
+          firstRef.current = false;
+        }
+      }, [active]);
       React.useEffect(() => {
         let frame = 0;
         let observer = null;
@@ -1330,7 +1386,7 @@ window.__ModuleLoader__.load({
             observer = new ResizeObserver(schedule);
             observer.observe(column);
           }
-          setBox(measureRightDock());
+          setBox(measureRightDock(arrivalRef.current, firstRef.current));
         };
         function schedule() {
           if (!frame) frame = window.requestAnimationFrame(measure);
@@ -1349,6 +1405,7 @@ window.__ModuleLoader__.load({
       const shown = active && box !== null;
       return h('div', {
         'data-ustc-quota-dock': 'right',
+        'data-ustc-quota-dock-order': arrivalRef.current || undefined,
         style: {
           position: 'fixed',
           top: box ? box.top : 0,
