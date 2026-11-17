@@ -1051,10 +1051,13 @@ window.__ModuleLoader__.load({
     }
 
     function QuotaStrip(props) {
-      const t = typeof props.t === 'function' ? props.t : fallbackT;
-      const placement = props.placement === 'right' ? 'right' : 'left';
+      // Everything the card does not consume is forwarded to its root element, so
+      // the dock can tag the panel (data-panel-dock-*) without a wrapper element.
+      const { t: tProp, placement: placementProp, active: activeProp, visible: visibleProp, wide: wideProp, style: styleProp, ...dockProps } = props;
+      const t = typeof tProp === 'function' ? tProp : fallbackT;
+      const placement = placementProp === 'right' ? 'right' : 'left';
       const position = placement;
-      const active = props.active !== false;
+      const active = activeProp !== false;
       const [cardHovered, setCardHovered] = React.useState(false);
       const [narrow, setNarrow] = React.useState(false);
       // The one-line layout needs ~340px of card width; below that keep the compact card.
@@ -1255,7 +1258,7 @@ window.__ModuleLoader__.load({
         });
         observer.observe(root);
         return () => { observer.disconnect(); };
-      }, [props.wide]);
+      }, [wideProp]);
 
 
       const keys = snapshot && Array.isArray(snapshot.keys) ? snapshot.keys : [];
@@ -1264,9 +1267,9 @@ window.__ModuleLoader__.load({
       const updated = snapshot && snapshot.generatedAt ? formatUpdated(snapshot.generatedAt) : null;
       const tokenworksNotReady = warnings.includes('tokenworks-not-ready');
 
-      if (props.wide === false) return null;
+      if (wideProp === false) return null;
       // Hidden seat: keep the component (and its data) mounted, render no DOM.
-      if (props.visible === false) return null;
+      if (visibleProp === false) return null;
 
       function handleVersionClick() {
         if (updateInfo && updateInfo.updateAvailable) {
@@ -1830,17 +1833,17 @@ window.__ModuleLoader__.load({
         ))
         : null;
 
-      return h('div', {
+      return h('div', Object.assign({}, dockProps, {
         // The dock owns geometry: it passes flex sizing through props.style and the
         // card must apply it last, otherwise it would size itself.
-        style: Object.assign({}, placement === 'right' ? Object.assign({}, STYLE.root, STYLE.rootDocked) : STYLE.root, props.style || {}),
+        style: Object.assign({}, placement === 'right' ? Object.assign({}, STYLE.root, STYLE.rootDocked) : STYLE.root, styleProp || {}),
         ref: rootRef,
         role: 'group',
         'aria-label': t('title'),
         'data-ustc-quota-root': '',
         onMouseEnter: () => { setCardHovered(true); },
         onMouseLeave: () => { setCardHovered(false); setMarkHovered(false); },
-      },
+      }),
       header,
       restartBanner,
       body,
