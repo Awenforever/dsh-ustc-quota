@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.47';
+    const CLIENT_VERSION = '1.1.49';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1189,8 +1189,8 @@ window.__ModuleLoader__.load({
     // conversation when either side is dragged or toggled.
     const DOCK_GAP = 6;
     const DOCK_MIN_WIDTH = 200;
-    const DOCK_MAX_WIDTH = 340;
     const DOCK_FLOOR_WIDTH = 140;
+    const DOCK_MAX_WIDTH = 420;
     const DOCK_TRANSCRIPT_FLOOR = 360;
 
 
@@ -1279,7 +1279,7 @@ window.__ModuleLoader__.load({
       return {
         top: stackTop,
         left: floored ? Math.max(0, rightEdge - 240) : leftEdge,
-        width: floored ? 240 : span,
+        width: floored ? 240 : Math.min(span, DOCK_MAX_WIDTH),
         naturalSpan: span,
         columnWidth: Math.round(columnRect.width),
         maxHeight: Math.max(120, Math.round(columnRect.bottom) - contentTop - DOCK_GAP),
@@ -1906,6 +1906,9 @@ window.__ModuleLoader__.load({
           if (text.length > valueChars) valueChars = text.length;
         }
       }
+      // Stale windows render an '≈ ' prefix, so the value column needs those chars too.
+      const hasStaleWindow = keys.some((key) => (key.windows || []).some((window) => window.state === 'stale'));
+      if (hasStaleWindow) valueChars += 2;
       const tableStyle = {
         ...STYLE.table,
         '--ustc-key-col': `${keyColumnWidth}px`,
