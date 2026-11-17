@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.53';
+    const CLIENT_VERSION = '1.1.54';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -541,6 +541,7 @@ window.__ModuleLoader__.load({
       key: {
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: 2,
         minWidth: 0,
         color: 'var(--dsw-alias-label-primary)',
@@ -621,7 +622,9 @@ window.__ModuleLoader__.load({
       valueWide: {
         flex: '0 0 auto',
         width: 'var(--ustc-value-w, 44px)',
-        textAlign: 'left',
+        textAlign: 'right',
+        padding: 0,
+        margin: 0,
         fontSize: 10,
         fontWeight: 650,
         color: 'var(--dsw-alias-label-primary)',
