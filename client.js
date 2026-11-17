@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.49';
+    const CLIENT_VERSION = '1.1.51';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -513,6 +513,14 @@ window.__ModuleLoader__.load({
         color: 'var(--dsw-alias-label-primary)',
         whiteSpace: 'nowrap',
       },
+      legendResetInline: {
+        minWidth: 0,
+        fontSize: 8,
+        color: 'var(--dsw-alias-label-secondary)',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      },
       legendMeta: {
         fontSize: 8,
         lineHeight: 1.2,
@@ -609,7 +617,7 @@ window.__ModuleLoader__.load({
       valueWide: {
         flex: '0 0 auto',
         width: 'var(--ustc-value-w, 44px)',
-        textAlign: 'right',
+        textAlign: 'left',
         fontSize: 10,
         fontWeight: 650,
         color: 'var(--dsw-alias-label-primary)',
@@ -1190,7 +1198,7 @@ window.__ModuleLoader__.load({
     const DOCK_GAP = 6;
     const DOCK_MIN_WIDTH = 200;
     const DOCK_FLOOR_WIDTH = 140;
-    const DOCK_MAX_WIDTH = 420;
+    const DOCK_MAX_WIDTH = 480;
     const DOCK_TRANSCRIPT_FLOOR = 360;
 
 
@@ -1748,7 +1756,7 @@ window.__ModuleLoader__.load({
           : label;
         return h('div', { style: wideLayout ? STYLE.legendCellWide : STYLE.legendCell, title },
           h('div', { style: STYLE.legendName }, label),
-          h('div', { style: STYLE.legendReset }, resetText)
+          h('div', { style: wideLayout ? STYLE.legendResetInline : STYLE.legendReset }, resetText)
         );
       }
 
@@ -1911,8 +1919,8 @@ window.__ModuleLoader__.load({
       if (hasStaleWindow) valueChars += 2;
       const tableStyle = {
         ...STYLE.table,
-        '--ustc-key-col': `${keyColumnWidth}px`,
-        '--ustc-gap': wideLayout ? '16px' : '4px',
+        '--ustc-key-col': `${wideLayout ? Math.min(keyColumnWidth, 32) : keyColumnWidth}px`,
+        '--ustc-gap': wideLayout ? '8px' : '4px',
         '--ustc-value-w': `${Math.min(12, valueChars + 0.5)}ch`,
       };
       const versionTitle = updateInfo && updateInfo.updateAvailable
