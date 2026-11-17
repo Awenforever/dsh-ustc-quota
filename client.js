@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.55';
+    const CLIENT_VERSION = '1.1.56';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -622,9 +622,9 @@ window.__ModuleLoader__.load({
       valueWide: {
         flex: '0 0 auto',
         width: 'var(--ustc-value-w, 44px)',
-        textAlign: 'left',
-        padding: 0,
-        margin: 0,
+        textAlign: 'right',
+        padding: '0 2px 0 0',
+        margin: '0 0 0 -2px',
         fontSize: 10,
         fontWeight: 650,
         color: 'var(--dsw-alias-label-primary)',
@@ -1839,12 +1839,14 @@ window.__ModuleLoader__.load({
           },
         })
         );
-        const valueNode = (style) => h('span', { style }, `${isStale ? '≈ ' : ''}${valueText}`);
+        const valueNode = (style) => h('span', { style: style }, `${isStale ? '≈ ' : ''}${valueText}`);
         const percentNode = (style) => (percent ? h('span', { style: { ...style, color: percentColor } }, percent) : null);
 
         if (wideLayout) {
+          const cellValueWidth = valueWidths.get(window.id);
+          const valueStyle = cellValueWidth ? { ...STYLE.valueWide, width: `${cellValueWidth}px` } : STYLE.valueWide;
           return h('div', { style: STYLE.cellWide, title: titleParts.join(' · ') },
-            valueNode(STYLE.valueWide),
+            valueNode(valueStyle),
             barNode(STYLE.inlineBar),
             percentNode(STYLE.percentWide)
           );
@@ -1921,28 +1923,36 @@ window.__ModuleLoader__.load({
           if (text.length > valueChars) valueChars = text.length;
         }
       }
-      // Width = exactly the widest value on screen, measured with the card's own font.
-      let valueWidthPx = null;
+      // Width per window column: each column only needs to fit its own widest value,
+      // so 3h/12h do not inherit the 24h column's wider numbers.
+      const valueWidths = new Map();
       try {
         const rootNode = rootRef.current;
-        const canvas = document.createElement('canvas');
-        const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
-        if (ctx) {
-          const family = rootNode ? getComputedStyle(rootNode).fontFamily : 'system-ui';
-          ctx.font = '650 10px ' + family;
-          let widest = 0;
-          for (const key of keys) {
-            for (const window of (key.windows || [])) {
+        if (rootNode && rootNode.isConnected) {
+          const probe = document.createElement('span');
+          probe.style.position = 'absolute';
+          probe.style.visibility = 'hidden';
+          probe.style.pointerEvents = 'none';
+          probe.style.whiteSpace = 'nowrap';
+          probe.style.fontSize = '10px';
+          probe.style.fontWeight = '650';
+          rootNode.appendChild(probe);
+          for (const windowId of WINDOW_IDS) {
+            let widest = 0;
+            for (const key of keys) {
+              const window = (key.windows || []).find((item) => item.id === windowId);
+              if (!window) continue;
               const usedValue = typeof window.used === 'number' && Number.isFinite(window.used) ? window.used : null;
               const limitValue = typeof window.limit === 'number' && Number.isFinite(window.limit) ? window.limit : null;
               const text = usedValue === null
                 ? '—'
                 : `${formatNumber(usedValue)}/${limitValue === null ? '—' : formatNumber(limitValue)}`;
-              const rendered = window.state === 'stale' ? `≈ ${text}` : text;
-              widest = Math.max(widest, ctx.measureText(rendered).width);
+              probe.textContent = window.state === 'stale' ? `≈ ${text}` : text;
+              widest = Math.max(widest, probe.getBoundingClientRect().width);
             }
+            if (widest > 0) valueWidths.set(windowId, Math.ceil(widest));
           }
-          if (widest > 0) valueWidthPx = Math.ceil(widest) + 1;
+          rootNode.removeChild(probe);
         }
       } catch {
         // measurement is best-effort; the ch fallback below still aligns the columns
@@ -1954,7 +1964,7 @@ window.__ModuleLoader__.load({
         ...STYLE.table,
         '--ustc-key-col': `${keyColumnWidth}px`,
         '--ustc-gap': wideLayout ? '6px' : '4px',
-        '--ustc-value-w': valueWidthPx ? `${valueWidthPx}px` : `${Math.min(12, valueChars + 0.5)}ch`,
+        '--ustc-value-w': `${Math.min(12, valueChars + 0.5)}ch`,
       };
       const versionTitle = updateInfo && updateInfo.updateAvailable
         ? `${t('updateAvailable')} v${updateInfo.latestVersion}`
