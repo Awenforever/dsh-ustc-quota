@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.56';
+    const CLIENT_VERSION = '1.1.57';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1278,11 +1278,20 @@ window.__ModuleLoader__.load({
       const floored = span < 240;
       let stackTop = contentTop;
       try {
-        // Other plugins place their own right docks with the same anchor; stack below
-        // any of them that already occupy this band so the cards never overlap.
+        // Other plugins place their own right docks on the same anchor. Deferring to
+        // every neighbour that overlaps this band makes two docks chase each other
+        // downwards: each one steps below the other, forever. Break the symmetry —
+        // yield only to a neighbour that starts strictly above this slot, or that
+        // starts at the same top and sorts earlier by id. Exactly one dock then
+        // yields per pair, so the arrangement settles after a single step.
+        const MY_DOCK_ID = 'ustc-quota';
         for (const node of document.querySelectorAll('[data-codex-advisor-dock="right"]')) {
           const rect = node.getBoundingClientRect();
           if (rect.height <= 0 || rect.width <= 0) continue;
+          const NEIGHBOUR_DOCK_ID = 'codex-advisor';
+          const startsAbove = rect.top < contentTop - 1;
+          const tiedAndEarlier = Math.abs(rect.top - contentTop) <= 1 && NEIGHBOUR_DOCK_ID < MY_DOCK_ID;
+          if (!startsAbove && !tiedAndEarlier) continue;
           if (rect.bottom > stackTop && rect.top < columnRect.bottom) {
             stackTop = Math.max(stackTop, Math.round(rect.bottom) + DOCK_GAP);
           }
