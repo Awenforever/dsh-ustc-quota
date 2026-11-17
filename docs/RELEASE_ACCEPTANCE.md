@@ -24,7 +24,7 @@ clear “no USTC provider” state, never to invented numbers.
 
 | Item | Value | As-of |
 |---|---|---|
-| Plugin | `dsh-ustc-quota` 1.1.38 | 2026-11-17 |
+| Plugin | `dsh-ustc-quota` 1.1.56 | 2026-11-17 |
 | DSH desktop | 0.2.1-rc.3, 0.2.2-rc.1, 0.2.2-rc.3 | 2026-11-15 |
 | TokenWorks | 词元工坊 0.2.12, portable program copy | 2026-10-29 |
 | Unit tests | 40 `node:test` cases (23 quota + 17 update) | 2026-11-15 |
@@ -690,3 +690,34 @@ with the whole reserve capped at 34% of the column.
 
 Verified over CDP on TokenWorks 1.1.38 (1280 px window, real session): padding
 settled at 146 px, dock x 1074–1234 with the rail at 1240, stable across samples.
+
+## 33. v1.1.50 – v1.1.56 — the wide right-hand layout, settled
+
+Everything in this range is gated by `wideLayout = placement === "right" && !narrow`
+(narrow = card border-box under 340 px). The left sidebar card keeps the original
+compact two-row layout and its 4 px column gap.
+
+Final geometry measured in the running app (CDP, 1920 px viewport, 480 px card):
+
+```
+grid = 36px key + 135.3px x 3, column gap 6px
+3h  column: value 38  bar 71.3  pct 24
+12h column: value 38  bar 71.3  pct 24
+24h column: value 44  bar 65.3  pct 24   (its values include NN.N/100)
+```
+
+How it got there:
+
+- v1.1.51 tightened the gap and capped the key column — the cap clipped `wmw * !`
+  to `w..*`, reverted in v1.1.52.
+- v1.1.53 measured the value column with canvas; that ignored `tabular-nums` and,
+  more importantly, took one global maximum so the 24h column stretched 3h/12h.
+- v1.1.56 measures **per column** with a hidden DOM probe that inherits the real
+  font, and hands the freed pixels to the bar.
+
+A temporary `DEBUG_GRID` build drew hairline outlines on table/legend/key/cell/
+value/bar/percent so the real cell widths were visible; it was removed before the
+release and never published.
+
+Trade-off accepted by the user: because columns are sized independently, the three
+bar runs start at different x positions.
