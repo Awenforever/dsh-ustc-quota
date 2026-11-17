@@ -11,12 +11,11 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.59';
+    const CLIENT_VERSION = '1.2.0';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
     const HOST_VERSION_KEY = `${NS}:host-version-reload`;
-    const POSITION_KEY = `${NS}:position`;
 
     function readDshVersion() {
       try {
@@ -921,113 +920,6 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // The sidebar footer is a flex row shared with TokenWorks' 更新 button or
-    // DSH's Cordis button. Global <style>/:has rules are not reliable on every
-    // carrier, so after mount we collapse the slot cells that contain only this
-    // card and make the real footer row wrap. Inline !important values are
-    // restored when the card unmounts.
-    function applyFooterLayout(root) {
-      const saved = [];
-      const apply = (el, property, value) => {
-        const previous = el.style.getPropertyValue(property);
-        const priority = el.style.getPropertyPriority(property);
-        saved.push({ el, property, previous, priority });
-        el.style.setProperty(property, value, 'important');
-      };
-      const restore = () => {
-        for (const item of saved.reverse()) {
-          if (item.previous) item.el.style.setProperty(item.property, item.previous, item.priority);
-          else item.el.style.removeProperty(item.property);
-        }
-      };
-      let footer = null;
-      try {
-        const classOf = (el) => typeof el.className === 'string' ? el.className : '';
-        for (let node = root.parentElement; node && node !== document.body; node = node.parentElement) {
-          if (classOf(node).includes('footerActions')) { footer = node; break; }
-        }
-        if (!footer) {
-          for (let node = root.parentElement; node && node !== document.body; node = node.parentElement) {
-            const style = getComputedStyle(node);
-            const hasOther = [...node.children].some((child) => child !== root && !child.contains(root));
-            if (hasOther && (style.display.includes('flex') || style.display.includes('grid'))) { footer = node; break; }
-          }
-        }
-        if (!footer) return { restore, footer: null };
-        const chain = [];
-        for (let node = root.parentElement; node && node !== footer && node !== document.body && chain.length < 6; node = node.parentElement) {
-          chain.push(node);
-        }
-        for (const node of chain) {
-          const onlyCard = [...node.children].every((child) => child === root || child.contains(root));
-          if (onlyCard) {
-            apply(node, 'display', 'contents');
-          } else {
-            apply(node, 'width', '100%');
-            apply(node, 'flex-basis', '100%');
-            apply(node, 'min-width', '0');
-            apply(node, 'overflow', 'visible');
-            const style = getComputedStyle(node);
-            if (style.display.includes('flex')) apply(node, 'flex-wrap', 'wrap');
-            if (style.display.includes('grid')) apply(node, 'grid-template-columns', '1fr');
-          }
-        }
-        apply(footer, 'flex-wrap', 'wrap');
-        apply(footer, 'width', '100%');
-        apply(footer, 'height', 'auto');
-        apply(footer, 'max-height', 'none');
-        apply(footer, 'overflow', 'visible');
-        // Keep this card after ordinary footer actions even when another
-        // plugin mounts after us. This is best-effort: the slot system has no
-        // shared layout-group contract, so a later plugin can still impose its
-        // own order/position.
-        apply(root, 'order', '2147483647');
-        const footerStyle = getComputedStyle(footer);
-        if (footerStyle.display.includes('grid')) apply(footer, 'grid-template-columns', '1fr');
-        const parent = footer.parentElement;
-        if (parent && parent !== document.body) {
-          const parentStyle = getComputedStyle(parent);
-          if (parentStyle.display.includes('flex')) apply(parent, 'flex-wrap', 'wrap');
-          if (parentStyle.display.includes('grid')) apply(parent, 'grid-template-columns', '1fr');
-        }
-      } catch {
-        // The card still renders; a carrier-specific footer simply stays as-is.
-      }
-      return { restore, footer };
-    }
-
-    // Other plugins may mount their footer actions after this card. Re-run the
-    // layout normalization when the footer's child list changes, but do not
-    // observe attributes: our own inline styles must not create a loop.
-    function installFooterLayout(root) {
-      let applied = { restore: () => {}, footer: null };
-      let observer = null;
-      let timer = null;
-      let pending = false;
-      const reapply = () => {
-        pending = false;
-        timer = null;
-        if (!root.isConnected) return;
-        applied.restore();
-        applied = applyFooterLayout(root);
-        if (observer) observer.disconnect();
-        if (!applied.footer || typeof MutationObserver === 'undefined') return;
-        if (!observer) {
-          observer = new MutationObserver(() => {
-            if (pending) return;
-            pending = true;
-            timer = setTimeout(reapply, 0);
-          });
-        }
-        observer.observe(applied.footer, { childList: true, subtree: true });
-      };
-      reapply();
-      return () => {
-        if (timer !== null) clearTimeout(timer);
-        if (observer) observer.disconnect();
-        applied.restore();
-      };
-    }
 
     // The sidebar footer is global, while the key actually in use is chosen per
     // conversation. This marker lives in each pane's composer dock; the focus
@@ -1158,272 +1050,10 @@ window.__ModuleLoader__.load({
       );
     }
 
-    const panelPositionListeners = new Set();
-
-    function readPanelPosition() {
-      try {
-        return window.localStorage.getItem(POSITION_KEY) === 'right' ? 'right' : 'left';
-      } catch {
-        return 'left';
-      }
-    }
-
-    function writePanelPosition(next) {
-      try {
-        window.localStorage.setItem(POSITION_KEY, next);
-      } catch {
-        // Storage unavailable: the position stays for this session only.
-      }
-      for (const listener of panelPositionListeners) listener();
-    }
-
-    function subscribePanelPosition(listener) {
-      panelPositionListeners.add(listener);
-      return () => { panelPositionListeners.delete(listener); };
-    }
-
-    function usePanelPosition() {
-      return React.useSyncExternalStore(subscribePanelPosition, readPanelPosition, readPanelPosition);
-    }
-
-    // Both seats stay mounted so switching dock position keeps the fetched data:
-    // the hidden seat only stops polling, it never unmounts.
-    function LeftDock(props) {
-      const position = usePanelPosition();
-      const active = position === 'left';
-      // No wrapper element: DSH's footer layout normalisation rewrites display on
-      // ancestors, which would unhide a wrapper we hid ourselves. The card stays
-      // mounted (state preserved) and returns null while the other seat is active.
-      return h(QuotaStrip, Object.assign({}, props, { placement: 'left', active, visible: active }));
-    }
-
-    // DSH exposes no plugin seat for the conversation's right column: 'rightbar'
-    // is a single seat owned by the shipped right sidebar. The dock therefore
-    // measures the conversation column and pins itself into the blank strip
-    // between the chat content and the turn navigator, so it follows the
-    // conversation when either side is dragged or toggled.
-    const DOCK_GAP = 6;
-    const DOCK_MIN_WIDTH = 200;
-    const DOCK_FLOOR_WIDTH = 140;
-    const DOCK_MAX_WIDTH = 480;
-    const DOCK_TRANSCRIPT_FLOOR = 360;
-
-
-    // First come, first served. A dock stamps the moment it becomes active on the
-    // right and publishes that stamp, so peers can compare arrivals without sharing
-    // any global state: an earlier stamp keeps the natural slot, a later one stacks
-    // below. Timestamps survive module reloads and cross-plugin isolation, which a
-    // shared counter does not.
-    const ARRIVAL_ATTR = 'data-ustc-quota-dock-arrived-at';
-    const PEER_ARRIVAL_ATTR = 'data-codex-advisor-dock-arrived-at';
-    const ARRIVAL_TIE_MS = 4;
-    function claimDockArrival() {
-      try {
-        return Date.now();
-      } catch {
-        return 0;
-      }
-    }
-
-    function neighbourDockVisible() {
-      try {
-        for (const node of document.querySelectorAll('[data-codex-advisor-dock="right"]')) {
-          const rect = node.getBoundingClientRect();
-          if (rect.width > 0 && rect.height > 0) return true;
-        }
-      } catch {
-        return false;
-      }
-      return false;
-    }
-
-    function measureRightDock(arrival, wasHereFirst) {
-      const holder = document.querySelector('[data-slot="main.conversation"]');
-      const column = holder ? (holder.firstElementChild || holder) : null;
-      if (!column) return null;
-      const columnRect = column.getBoundingClientRect();
-      if (columnRect.width < 200 || columnRect.height < 120) return null;
-
-      // Left bound: the conversation boundary the user drags. DSH draws two
-      // .widthHandle strips beside the transcript; the card starts to their right,
-      // so it never covers the transcript and never touches the boundary.
-      let boundaryRight = null;
-      for (const handle of document.querySelectorAll('[class*="widthHandle"]')) {
-        if (handle.getAttribute('data-side') === 'left') continue;
-        const rect = handle.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height < 40) continue;
-        boundaryRight = boundaryRight === null ? rect.right : Math.max(boundaryRight, rect.right);
-      }
-      if (boundaryRight === null) boundaryRight = columnRect.left + columnRect.width * 0.5 + 24;
-
-      // Right bound: the turn rail when there are turns; otherwise the collapsed
-      // right-sidebar icon rail, which only counts when it sits at the far right.
-      let rightLimit = columnRect.right;
-      for (const button of document.querySelectorAll('button[aria-label]')) {
-        const label = button.getAttribute('aria-label') || '';
-        const isTurn = /turnNavigation|轮次|跳转/i.test(label);
-        const isRail = /右侧边栏/.test(label);
-        if (!isTurn && !isRail) continue;
-        const rect = button.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) continue;
-        if (rect.left <= boundaryRight) continue;
-        if (isRail && columnRect.right - rect.left > 72) continue;
-        if (rect.left < rightLimit) rightLimit = rect.left;
-      }
-      if (rightLimit > columnRect.right) rightLimit = columnRect.right;
-
-      const leftEdge = Math.round(boundaryRight) + DOCK_GAP;
-      const rightEdge = Math.round(rightLimit) - DOCK_GAP;
-      const span = rightEdge - leftEdge;
-      if (span < 40) {
-        // Measurement can fail transiently (column re-mounts, first paint). Never
-        // hide the card: anchor it to the column's right edge with a sane width and
-        // let the next measurement refine it.
-        const fallbackTop = Math.round(columnRect.top) + 40;
-        const fallbackWidth = Math.min(300, Math.max(220, Math.round(columnRect.width * 0.24)));
-        return {
-          top: fallbackTop,
-          left: Math.max(0, Math.round(columnRect.right) - fallbackWidth - 12),
-          width: fallbackWidth,
-          naturalSpan: fallbackWidth,
-          columnWidth: Math.round(columnRect.width),
-          maxHeight: Math.max(120, Math.round(columnRect.height) - 60),
-          fallback: true,
-        };
-      }
-
-      // Vertical bound: below the conversation tab strip, above the column bottom.
-      let contentTop = Math.round(columnRect.top) + DOCK_GAP;
-      const tabStrip = document.querySelector('[data-conversation-tabs]');
-      if (tabStrip) {
-        const row = tabStrip.parentElement || tabStrip;
-        const rowRect = row.getBoundingClientRect();
-        if (rowRect.height > 0 && rowRect.bottom > columnRect.top && rowRect.bottom < columnRect.bottom) {
-          contentTop = Math.max(contentTop, Math.round(rowRect.bottom) + DOCK_GAP);
-        }
-      }
-
-      const floored = span < 240;
-      let stackTop = contentTop;
-      try {
-        // Other plugins place their own right docks on the same anchor. Deferring to
-        // every overlapping neighbour makes two docks chase each other downwards, so
-        // the rule is arrival order: yield to a neighbour only when it arrived first.
-        // A neighbour that arrived later stacks below us instead. Neighbours that do
-        // not publish an arrival number fall back to position: yield when it already
-        // sits in this slot, and on an exact tie let the earlier id win so the very
-        // first paint cannot deadlock.
-        const MY_DOCK_ID = 'ustc-quota';
-        for (const node of document.querySelectorAll('[data-codex-advisor-dock="right"]')) {
-          const rect = node.getBoundingClientRect();
-          if (rect.height <= 0 || rect.width <= 0) continue;
-          const NEIGHBOUR_DOCK_ID = 'codex-advisor';
-          const neighbourArrival = Number(node.getAttribute(PEER_ARRIVAL_ATTR)) || 0;
-          let yieldToNeighbour;
-          if (neighbourArrival > 0 && arrival > 0 && Math.abs(neighbourArrival - arrival) > ARRIVAL_TIE_MS) {
-            // Both sides published a stamp: the earlier arrival keeps the slot.
-            yieldToNeighbour = neighbourArrival < arrival;
-          } else if (wasHereFirst && rect.top > contentTop) {
-            // We were already on the right when the neighbour appeared and it sits
-            // below us: never chase it. If instead it shares our slot (a neighbour
-            // that has not adopted this contract yet) fall through to the position
-            // rule, because two overlapping cards are worse than a wrong order.
-            yieldToNeighbour = false;
-          } else {
-            const startsAbove = rect.top < contentTop - 1;
-            const tiedAndEarlier = Math.abs(rect.top - contentTop) <= 1 && NEIGHBOUR_DOCK_ID < MY_DOCK_ID;
-            yieldToNeighbour = startsAbove || tiedAndEarlier;
-          }
-          if (!yieldToNeighbour) continue;
-          if (rect.bottom > stackTop && rect.top < columnRect.bottom) {
-            stackTop = Math.max(stackTop, Math.round(rect.bottom) + DOCK_GAP);
-          }
-        }
-      } catch {
-        // Stacking is best-effort; a broken neighbour must not break this card.
-      }
-
-      return {
-        top: stackTop,
-        left: floored ? Math.max(0, rightEdge - 240) : leftEdge,
-        width: floored ? 240 : Math.min(span, DOCK_MAX_WIDTH),
-        naturalSpan: span,
-        columnWidth: Math.round(columnRect.width),
-        maxHeight: Math.max(120, Math.round(columnRect.bottom) - contentTop - DOCK_GAP),
-      };
-    }
-
-    function RightDock(props) {
-      const position = usePanelPosition();
-      const active = position === 'right';
-      const [box, setBox] = React.useState(null);
-      const activeRef = React.useRef(active);
-      activeRef.current = active;
-      const arrivalRef = React.useRef(0);
-      const firstRef = React.useRef(false);
-      React.useEffect(() => {
-        if (active) {
-          firstRef.current = !neighbourDockVisible();
-          arrivalRef.current = claimDockArrival();
-          setBox(measureRightDock(arrivalRef.current, firstRef.current));
-        } else {
-          arrivalRef.current = 0;
-          firstRef.current = false;
-        }
-      }, [active]);
-      React.useEffect(() => {
-        let frame = 0;
-        let observer = null;
-        let observed = null;
-        const measure = () => {
-          frame = 0;
-          const holder = document.querySelector('[data-slot="main.conversation"]');
-          const column = holder ? (holder.firstElementChild || holder) : null;
-          if (column && column !== observed && typeof ResizeObserver === 'function') {
-            if (observer) observer.disconnect();
-            observed = column;
-            observer = new ResizeObserver(schedule);
-            observer.observe(column);
-          }
-          setBox(measureRightDock(arrivalRef.current, firstRef.current));
-        };
-        function schedule() {
-          if (!frame) frame = window.requestAnimationFrame(measure);
-        }
-        measure();
-        const timer = window.setInterval(measure, 2000);
-        window.addEventListener('resize', schedule);
-        return () => {
-          window.removeEventListener('resize', schedule);
-          window.clearInterval(timer);
-          if (observer) observer.disconnect();
-          if (frame) window.cancelAnimationFrame(frame);
-        };
-      }, []);
-
-      const shown = active && box !== null;
-      return h('div', {
-        'data-ustc-quota-dock': 'right',
-        [ARRIVAL_ATTR]: arrivalRef.current || undefined,
-        style: {
-          position: 'fixed',
-          top: box ? box.top : 0,
-          left: box ? box.left : 0,
-          width: box ? box.width : DOCK_MIN_WIDTH,
-          maxHeight: box ? box.maxHeight : 0,
-          overflow: 'visible',
-          display: shown ? 'flex' : 'none',
-          flexDirection: 'column',
-          gap: 6,
-          pointerEvents: 'auto',
-          zIndex: 5,
-        },
-      }, h(QuotaStrip, Object.assign({}, props, { placement: 'right', wide: true, active, visible: active })));
-    }
     function QuotaStrip(props) {
       const t = typeof props.t === 'function' ? props.t : fallbackT;
       const placement = props.placement === 'right' ? 'right' : 'left';
-      const position = usePanelPosition();
+      const position = placement;
       const active = props.active !== false;
       const [cardHovered, setCardHovered] = React.useState(false);
       const [narrow, setNarrow] = React.useState(false);
@@ -1627,14 +1257,6 @@ window.__ModuleLoader__.load({
         return () => { observer.disconnect(); };
       }, [props.wide]);
 
-      React.useLayoutEffect(() => {
-        const root = rootRef.current;
-        if (!root) return undefined;
-        // The right dock is not inside DSH's footer row; rewriting ancestors there
-        // would fight the dock container instead of the sidebar layout.
-        if (placement === 'right' || props.visible === false) return undefined;
-        return installFooterLayout(root);
-      }, [props.wide, placement]);
 
       const keys = snapshot && Array.isArray(snapshot.keys) ? snapshot.keys : [];
       const warnings = snapshot && Array.isArray(snapshot.warnings) ? snapshot.warnings : [];
@@ -2042,7 +1664,10 @@ window.__ModuleLoader__.load({
           'data-ustc-position-toggle': '',
           'aria-label': position === 'right' ? t('moveToLeft') : t('moveToRight'),
           title: position === 'right' ? t('moveToLeft') : t('moveToRight'),
-          onClick: () => { writePanelPosition(position === 'right' ? 'left' : 'right'); },
+          onClick: () => {
+            const dock = window.__dshPanelDock;
+            if (dock && typeof dock.toggleSide === 'function') dock.toggleSide('ustc-quota');
+          },
           onMouseEnter: () => { setMarkHovered(true); },
           onMouseLeave: () => { setMarkHovered(false); },
           onFocus: () => { setMarkHovered(true); },
@@ -2206,7 +1831,9 @@ window.__ModuleLoader__.load({
         : null;
 
       return h('div', {
-        style: placement === 'right' ? Object.assign({}, STYLE.root, STYLE.rootDocked) : STYLE.root,
+        // The dock owns geometry: it passes flex sizing through props.style and the
+        // card must apply it last, otherwise it would size itself.
+        style: Object.assign({}, placement === 'right' ? Object.assign({}, STYLE.root, STYLE.rootDocked) : STYLE.root, props.style || {}),
         ref: rootRef,
         role: 'group',
         'aria-label': t('title'),
@@ -2326,9 +1953,31 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // Safety net: if panel-dock is not active yet (a freshly added bundle only
+    // loads after a DSH restart), the card must still be reachable. This legacy
+    // seat renders nothing once the dock is present, so the card never appears
+    // twice.
+    function QuotaFallback(props) {
+      try { console.log('quota: fallback render', Boolean(window.__dshPanelDock)) } catch {}
+      const docked = typeof window !== 'undefined' && Boolean(window.__dshPanelDock);
+      if (docked) return null;
+      const t = typeof props.t === 'function' ? props.t : fallbackT;
+      return h(QuotaStrip, Object.assign({}, props, { t, placement: 'left', visible: true }));
+    }
+
+    // The card is a panel-dock panel: the dock owns geometry and remembers which
+    // side the user picked; this file only renders content.
+    function QuotaPanel(props) {
+      const t = typeof props.t === 'function' ? props.t : fallbackT;
+      const dock = typeof window !== 'undefined' ? window.__dshPanelDock : null;
+      const side = dock && typeof dock.getSide === 'function' ? dock.getSide('ustc-quota') : 'left';
+      return h(QuotaStrip, Object.assign({}, props, { t, placement: side, visible: true }));
+    }
+
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
+        try { console.log('quota: apply start') } catch {}
         clientCtx = ctx;
         reloadOnceAfterClientUpdate();
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-ustc-quota: locale dictionaries');
@@ -2345,14 +1994,35 @@ window.__ModuleLoader__.load({
           order: 0,
           locale: NS,
           inject: () => ({ t }),
-        }, LeftDock));
-        ctx.slots.inject('shell.overlay', () => ctx.slots.register({
-          name: 'shell.overlay',
-          id: 'ustc-quota-right',
-          order: 100,
-          locale: NS,
-          inject: () => ({ t }),
-        }, RightDock));
+        }, QuotaFallback));
+        ctx.effect(() => {
+          let dispose = null;
+          let disposed = false;
+          let timer = 0;
+          const register = () => {
+            const dock = typeof window === 'undefined' ? null : window.__dshPanelDock;
+            if (!dock) { timer = setTimeout(register, 250); return; }
+            if (disposed) return;
+            try {
+              dispose = dock.define({
+                id: 'ustc-quota',
+                title: t('title'),
+                order: 10,
+                side: 'left',
+                height: 'auto',
+                component: (props) => h(QuotaPanel, Object.assign({}, props, { t })),
+              });
+            } catch (error) {
+              console.error('dsh-ustc-quota: panel registration failed', error);
+            }
+          };
+          register();
+          return () => {
+            disposed = true;
+            if (timer) clearTimeout(timer);
+            if (dispose) { try { dispose(); } catch {} }
+          };
+        }, 'dsh-ustc-quota: panel');
       },
     };
   },
