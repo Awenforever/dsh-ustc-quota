@@ -1958,7 +1958,6 @@ window.__ModuleLoader__.load({
     // seat renders nothing once the dock is present, so the card never appears
     // twice.
     function QuotaFallback(props) {
-      try { console.log('quota: fallback render', Boolean(window.__dshPanelDock)) } catch {}
       const docked = typeof window !== 'undefined' && Boolean(window.__dshPanelDock);
       if (docked) return null;
       const t = typeof props.t === 'function' ? props.t : fallbackT;
@@ -1977,7 +1976,6 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
-        try { console.log('quota: apply start') } catch {}
         clientCtx = ctx;
         reloadOnceAfterClientUpdate();
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-ustc-quota: locale dictionaries');
