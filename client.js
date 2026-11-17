@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.52';
+    const CLIENT_VERSION = '1.1.53';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -587,11 +587,15 @@ window.__ModuleLoader__.load({
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 3,
+        gap: 2,
+        padding: 0,
+        margin: 0,
       },
       inlineBar: {
         flex: '1 1 0',
         minWidth: 8,
+        margin: 0,
+        padding: 0,
         height: 5,
         position: 'relative',
         borderRadius: 999,
@@ -628,7 +632,7 @@ window.__ModuleLoader__.load({
       percentWide: {
         flex: '0 0 auto',
         width: 24,
-        textAlign: 'right',
+        textAlign: 'left',
         fontSize: 8.5,
         color: 'var(--dsw-alias-label-secondary)',
         whiteSpace: 'nowrap',
@@ -1914,6 +1918,32 @@ window.__ModuleLoader__.load({
           if (text.length > valueChars) valueChars = text.length;
         }
       }
+      // Width = exactly the widest value on screen, measured with the card's own font.
+      let valueWidthPx = null;
+      try {
+        const rootNode = rootRef.current;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+        if (ctx) {
+          const family = rootNode ? getComputedStyle(rootNode).fontFamily : 'system-ui';
+          ctx.font = '650 10px ' + family;
+          let widest = 0;
+          for (const key of keys) {
+            for (const window of (key.windows || [])) {
+              const usedValue = typeof window.used === 'number' && Number.isFinite(window.used) ? window.used : null;
+              const limitValue = typeof window.limit === 'number' && Number.isFinite(window.limit) ? window.limit : null;
+              const text = usedValue === null
+                ? '—'
+                : `${formatNumber(usedValue)}/${limitValue === null ? '—' : formatNumber(limitValue)}`;
+              const rendered = window.state === 'stale' ? `≈ ${text}` : text;
+              widest = Math.max(widest, ctx.measureText(rendered).width);
+            }
+          }
+          if (widest > 0) valueWidthPx = Math.ceil(widest) + 1;
+        }
+      } catch {
+        // measurement is best-effort; the ch fallback below still aligns the columns
+      }
       // Stale windows render an '≈ ' prefix, so the value column needs those chars too.
       const hasStaleWindow = keys.some((key) => (key.windows || []).some((window) => window.state === 'stale'));
       if (hasStaleWindow) valueChars += 2;
@@ -1921,7 +1951,7 @@ window.__ModuleLoader__.load({
         ...STYLE.table,
         '--ustc-key-col': `${keyColumnWidth}px`,
         '--ustc-gap': wideLayout ? '8px' : '4px',
-        '--ustc-value-w': `${Math.min(12, valueChars + 0.5)}ch`,
+        '--ustc-value-w': valueWidthPx ? `${valueWidthPx}px` : `${Math.min(12, valueChars + 0.5)}ch`,
       };
       const versionTitle = updateInfo && updateInfo.updateAvailable
         ? `${t('updateAvailable')} v${updateInfo.latestVersion}`
