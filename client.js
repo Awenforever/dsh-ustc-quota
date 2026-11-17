@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.54';
+    const CLIENT_VERSION = '1.1.55';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -622,7 +622,7 @@ window.__ModuleLoader__.load({
       valueWide: {
         flex: '0 0 auto',
         width: 'var(--ustc-value-w, 44px)',
-        textAlign: 'right',
+        textAlign: 'left',
         padding: 0,
         margin: 0,
         fontSize: 10,
@@ -1953,7 +1953,7 @@ window.__ModuleLoader__.load({
       const tableStyle = {
         ...STYLE.table,
         '--ustc-key-col': `${keyColumnWidth}px`,
-        '--ustc-gap': wideLayout ? '8px' : '4px',
+        '--ustc-gap': wideLayout ? '6px' : '4px',
         '--ustc-value-w': valueWidthPx ? `${valueWidthPx}px` : `${Math.min(12, valueChars + 0.5)}ch`,
       };
       const versionTitle = updateInfo && updateInfo.updateAvailable
