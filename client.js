@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.46';
+    const CLIENT_VERSION = '1.1.47';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1232,7 +1232,22 @@ window.__ModuleLoader__.load({
       const leftEdge = Math.round(boundaryRight) + DOCK_GAP;
       const rightEdge = Math.round(rightLimit) - DOCK_GAP;
       const span = rightEdge - leftEdge;
-      if (span < 40) return null;
+      if (span < 40) {
+        // Measurement can fail transiently (column re-mounts, first paint). Never
+        // hide the card: anchor it to the column's right edge with a sane width and
+        // let the next measurement refine it.
+        const fallbackTop = Math.round(columnRect.top) + 40;
+        const fallbackWidth = Math.min(300, Math.max(220, Math.round(columnRect.width * 0.24)));
+        return {
+          top: fallbackTop,
+          left: Math.max(0, Math.round(columnRect.right) - fallbackWidth - 12),
+          width: fallbackWidth,
+          naturalSpan: fallbackWidth,
+          columnWidth: Math.round(columnRect.width),
+          maxHeight: Math.max(120, Math.round(columnRect.height) - 60),
+          fallback: true,
+        };
+      }
 
       // Vertical bound: below the conversation tab strip, above the column bottom.
       let contentTop = Math.round(columnRect.top) + DOCK_GAP;
@@ -1246,8 +1261,23 @@ window.__ModuleLoader__.load({
       }
 
       const floored = span < 240;
+      let stackTop = contentTop;
+      try {
+        // Other plugins place their own right docks with the same anchor; stack below
+        // any of them that already occupy this band so the cards never overlap.
+        for (const node of document.querySelectorAll('[data-codex-advisor-dock="right"]')) {
+          const rect = node.getBoundingClientRect();
+          if (rect.height <= 0 || rect.width <= 0) continue;
+          if (rect.bottom > stackTop && rect.top < columnRect.bottom) {
+            stackTop = Math.max(stackTop, Math.round(rect.bottom) + DOCK_GAP);
+          }
+        }
+      } catch {
+        // Stacking is best-effort; a broken neighbour must not break this card.
+      }
+
       return {
-        top: contentTop,
+        top: stackTop,
         left: floored ? Math.max(0, rightEdge - 240) : leftEdge,
         width: floored ? 240 : span,
         naturalSpan: span,
