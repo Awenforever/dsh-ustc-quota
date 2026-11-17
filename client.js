@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.1.58';
+    const CLIENT_VERSION = '1.1.59';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -1209,19 +1209,17 @@ window.__ModuleLoader__.load({
     const DOCK_TRANSCRIPT_FLOOR = 360;
 
 
-    // First come, first served. Each plugin right dock claims an arrival number the
-    // moment it becomes active on the right and publishes it as a data attribute, so
-    // a neighbour can compare. The earlier arrival keeps the natural slot; the later
-    // one stacks below it. Deliberately not id-ordered or height-ordered — whoever
-    // got there first wins, which is the least surprising rule for the user.
-    const ARRIVAL_KEY = '__dshRightDockArrival';
+    // First come, first served. A dock stamps the moment it becomes active on the
+    // right and publishes that stamp, so peers can compare arrivals without sharing
+    // any global state: an earlier stamp keeps the natural slot, a later one stacks
+    // below. Timestamps survive module reloads and cross-plugin isolation, which a
+    // shared counter does not.
+    const ARRIVAL_ATTR = 'data-ustc-quota-dock-arrived-at';
+    const PEER_ARRIVAL_ATTR = 'data-codex-advisor-dock-arrived-at';
+    const ARRIVAL_TIE_MS = 4;
     function claimDockArrival() {
       try {
-        const scope = typeof window === 'undefined' ? null : window;
-        if (!scope) return 0;
-        const next = (Number(scope[ARRIVAL_KEY]) || 0) + 1;
-        scope[ARRIVAL_KEY] = next;
-        return next;
+        return Date.now();
       } catch {
         return 0;
       }
@@ -1320,9 +1318,10 @@ window.__ModuleLoader__.load({
           const rect = node.getBoundingClientRect();
           if (rect.height <= 0 || rect.width <= 0) continue;
           const NEIGHBOUR_DOCK_ID = 'codex-advisor';
-          const neighbourArrival = Number(node.getAttribute('data-codex-advisor-dock-order')) || 0;
+          const neighbourArrival = Number(node.getAttribute(PEER_ARRIVAL_ATTR)) || 0;
           let yieldToNeighbour;
-          if (neighbourArrival > 0 && arrival > 0) {
+          if (neighbourArrival > 0 && arrival > 0 && Math.abs(neighbourArrival - arrival) > ARRIVAL_TIE_MS) {
+            // Both sides published a stamp: the earlier arrival keeps the slot.
             yieldToNeighbour = neighbourArrival < arrival;
           } else if (wasHereFirst && rect.top > contentTop) {
             // We were already on the right when the neighbour appeared and it sits
@@ -1405,7 +1404,7 @@ window.__ModuleLoader__.load({
       const shown = active && box !== null;
       return h('div', {
         'data-ustc-quota-dock': 'right',
-        'data-ustc-quota-dock-order': arrivalRef.current || undefined,
+        [ARRIVAL_ATTR]: arrivalRef.current || undefined,
         style: {
           position: 'fixed',
           top: box ? box.top : 0,
