@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.2.2';
+    const CLIENT_VERSION = '1.2.3';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -546,12 +546,12 @@ window.__ModuleLoader__.load({
         fontSize: 10.5,
       },
       keyLabel: {
-        minWidth: 0,
-        flex: '0 1 auto',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
+        // The provider key names the row: they must never be clipped, even when the
+        // card is squeezed to the sidebar width.
+        minWidth: 'max-content',
+        flex: '0 0 auto',
+        overflow: 'visible',
         whiteSpace: 'nowrap',
-        maxWidth: 'none',
       },
       star: {
         flex: '0 0 auto',
@@ -1393,22 +1393,32 @@ window.__ModuleLoader__.load({
         return width;
       }
 
+      function keyDisplayLabel(key) {
+        const label = typeof key.label === 'string' && key.label ? key.label : key.provider;
+        return key.provider === 'ustc-llm' && label === 'TokenWorks' ? t('tokenworksRow') : label;
+      }
+
+      function keyNeedsAttention(key) {
+        const windows = Array.isArray(key.windows) ? key.windows : [];
+        const limited = key.blocked === true || windows.some((window) =>
+          (window.state === 'active' || window.state === 'stale')
+          && typeof window.ratio === 'number'
+          && window.ratio >= 1);
+        return key.ok === false || limited;
+      }
+
+      function keyIsCurrent(key, currentProvider, fallbackProvider) {
+        return typeof currentProvider === 'string'
+          ? key.provider === currentProvider
+          : key.default || key.provider === fallbackProvider;
+      }
+
       function keyColumnWidthFor(rows, currentProvider, fallbackProvider) {
         let width = 36;
         for (const key of Array.isArray(rows) ? rows : []) {
-          const windows = Array.isArray(key.windows) ? key.windows : [];
-          const limited = key.blocked === true || windows.some((window) =>
-            (window.state === 'active' || window.state === 'stale')
-            && typeof window.ratio === 'number'
-            && window.ratio >= 1);
-          const issue = key.ok === false || limited;
-          const label = typeof key.label === 'string' && key.label ? key.label : key.provider;
-          const displayLabel = key.provider === 'ustc-llm' && label === 'TokenWorks'
-            ? t('tokenworksRow')
-            : label;
-          const isCurrent = typeof currentProvider === 'string'
-            ? key.provider === currentProvider
-            : key.default || key.provider === fallbackProvider;
+          const issue = keyNeedsAttention(key);
+          const displayLabel = keyDisplayLabel(key);
+          const isCurrent = keyIsCurrent(key, currentProvider, fallbackProvider);
           width = Math.max(
             width,
             estimatedTextWidth(displayLabel)
@@ -1599,7 +1609,10 @@ window.__ModuleLoader__.load({
       }
 
       const failed = keys.filter((key) => key.ok === false);
-      const keyColumnWidth = keyColumnWidthFor(keys, activeProvider, defaultProvider);
+      // The key column is measured, not guessed: a short estimate would clip the row
+      // name, and the name is the only thing that identifies the row.
+      const estimatedKeyWidth = keyColumnWidthFor(keys, activeProvider, defaultProvider);
+      let measuredKeyWidth = 0;
       // Align the bars by sizing the value column to the longest value on screen.
       let valueChars = 3;
       for (const key of keys) {
@@ -1641,12 +1654,24 @@ window.__ModuleLoader__.load({
             }
             if (widest > 0) valueWidths.set(windowId, Math.ceil(widest));
           }
+          // Same probe, key font: the label width has to be real, not estimated.
+          probe.style.fontSize = '10.5px';
+          probe.style.fontWeight = '650';
+          for (const key of keys) {
+            probe.textContent = keyDisplayLabel(key);
+            measuredKeyWidth = Math.max(measuredKeyWidth, probe.getBoundingClientRect().width);
+          }
           rootNode.removeChild(probe);
         }
       } catch {
         // measurement is best-effort; the ch fallback below still aligns the columns
       }
       // Stale windows render an '≈ ' prefix, so the value column needs those chars too.
+      const keyStarPad = keys.some((key) => keyIsCurrent(key, activeProvider, defaultProvider)) ? 7 : 0;
+      const keyDotPad = keys.some((key) => keyNeedsAttention(key)) ? 14 : 0;
+      const keyColumnWidth = measuredKeyWidth > 0
+        ? Math.max(estimatedKeyWidth, Math.ceil(measuredKeyWidth) + keyStarPad + keyDotPad + 10)
+        : estimatedKeyWidth;
       const hasStaleWindow = keys.some((key) => (key.windows || []).some((window) => window.state === 'stale'));
       if (hasStaleWindow) valueChars += 2;
       const tableStyle = {
