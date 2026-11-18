@@ -406,3 +406,18 @@ test('TokenWorks past reset becomes resetting instead of showing stale numbers',
   assert.equal(mapped.keys[0].windows[0].ratio, null);
 });
 
+
+test('tokenworks snapshot derives the spend from the remainder when usage is unknown', () => {
+  const mapped = mapTokenworksSnapshot({
+    ready: true,
+    state: 'ok',
+    blocked: false,
+    windows: [
+      { duration: '3h', limit: 30, windowSpend: null, usedKnown: false, remaining: 22.5, usedPercent: null, resetAt: null, scope: 'key' },
+    ],
+  })
+  const window = mapped.keys[0].windows[0]
+  assert.equal(window.state, 'active')
+  assert.equal(window.used, 7.5)
+  assert.equal(window.limit, 30)
+})

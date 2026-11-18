@@ -226,7 +226,14 @@ export function mapTokenworksSnapshot(snapshot, now = Date.now()) {
     if (id === null) continue;
     const limit = numeric(entry.limit);
     if (limit === null || limit <= 0) continue;
-    const used = numeric(entry.windowSpend);
+    // The official snapshot may know only the remainder (`usedKnown: false` with a
+    // usable `remaining`), in which case the spend has to be derived or the card would
+    // show an empty window even though the platform reported a number.
+    let used = numeric(entry.windowSpend);
+    if (used === null) {
+      const remaining = numeric(entry.remaining);
+      if (remaining !== null) used = limit - remaining;
+    }
     const candidate = {
       id,
       source: entry.scope === 'user' ? 'user' : 'key',
