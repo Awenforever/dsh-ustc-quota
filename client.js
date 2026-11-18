@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.2.3';
+    const CLIENT_VERSION = '1.2.6';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -366,7 +366,12 @@ window.__ModuleLoader__.load({
         fontVariantNumeric: 'tabular-nums',
       },
       rootDocked: {
+        // The docked card is a tinted plate on the conversation's white margin, while the
+        // sidebar card is a white plate on a tinted sidebar. Same shadow geometry, but the
+        // black-based cast reads as a dirty smear in the narrow gap between two plates, so
+        // the docked variant uses a lighter, cooler cast of the same shape.
         background: 'var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-module-platform))',
+        boxShadow: '0 3px 12px rgba(15, 23, 42, 0.06)',
       },
       header: {
         display: 'flex',
