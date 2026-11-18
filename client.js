@@ -858,10 +858,11 @@ window.__ModuleLoader__.load({
     function formatPercent(ratio) {
       if (typeof ratio !== 'number' || !Number.isFinite(ratio)) return null;
       const percent = ratio * 100;
-      const tenths = Math.round(percent * 10) / 10;
-      if (tenths === 0) return '0%';
-      if (tenths < 10) return `${tenths.toFixed(1)}%`;
-      return `${Math.round(percent)}%`;
+      // One rule for every window: whole percentages, except below 1% where rounding
+      // to zero would hide a real value. Mixing 9.4% with 13% read as a bug.
+      const rounded = Math.round(percent);
+      if (rounded === 0 && percent > 0) return `${(Math.round(percent * 10) / 10).toFixed(1)}%`;
+      return `${rounded}%`;
     }
 
     function formatClock(iso) {
