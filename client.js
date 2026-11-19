@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const UPDATE_ENDPOINT = 'plugins/dsh-ustc-quota/update';
     const UPDATE_APPLY_ENDPOINT = 'plugins/dsh-ustc-quota/update/apply';
     const WINDOW_IDS = ['3h', '12h', '24h'];
-    const CLIENT_VERSION = '1.2.7';
+    const CLIENT_VERSION = '1.2.8';
     const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const CLIENT_VERSION_KEY = `${NS}:client-version`;
     const CLIENT_RELOAD_KEY = `${NS}:client-reload`;
@@ -2044,6 +2044,10 @@ window.__ModuleLoader__.load({
                 title: t('title'),
                 order: 10,
                 side: 'left',
+                // Below 280px the 24h column drops its digits (`≈ 35.9/1…`), measured on a
+                // real board at 264/280. The dock promises not to render the band narrower
+                // than this and only takes the difference from the conversation.
+                minWidth: 280,
                 height: 'auto',
                 component: (props) => h(QuotaPanel, Object.assign({}, props, { t })),
               });
