@@ -421,3 +421,10 @@ test('tokenworks snapshot derives the spend from the remainder when usage is unk
   assert.equal(window.used, 7.5)
   assert.equal(window.limit, 30)
 })
+
+test('the dock definition keeps its readable-width floor', async () => {
+  const { readFileSync } = await import('node:fs')
+  const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  assert.match(source, /minWidth:\s*280/)
+  assert.match(source, /id:\s*'ustc-quota'/)
+})
